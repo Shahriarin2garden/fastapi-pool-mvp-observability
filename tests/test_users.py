@@ -1,5 +1,6 @@
 import pytest
 import requests
+import uuid
 
 # Test against the running application (internal Docker network)
 BASE_URL = "http://app:8000"
@@ -18,10 +19,11 @@ def test_list_users():
 
 
 def test_create_user():
-    user_data = {"name": "Test User", "email": "pytest@example.com"}
+    unique_id = str(uuid.uuid4())[:8]
+    user_data = {"name": "Test User", "email": f"pytest-{unique_id}@example.com"}
     response = requests.post(f"{BASE_URL}/users/", json=user_data)
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == "Test User"
-    assert data["email"] == "pytest@example.com"
+    assert data["email"] == f"pytest-{unique_id}@example.com"
     assert "id" in data
