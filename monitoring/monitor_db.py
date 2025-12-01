@@ -86,6 +86,26 @@ def clear_screen():
     import os
     os.system('cls' if os.name == 'nt' else 'clear')
 
+def print_db_stats(db_stats):
+    """Print database statistics"""
+    if db_stats['success']:
+        print("Database Status:     [CONNECTED]")
+        print(f"Total Connections:   {db_stats['total_connections']}")
+        print(f"Active Connections:  {db_stats['active_connections']}")
+        print(f"Idle Connections:    {db_stats['idle_connections']}")
+        print(f"Users in Database:   {db_stats['user_count']}")
+        print(f"Database Size:       {db_stats['db_size']}")
+    else:
+        print(f"Database Status:     [ERROR] {db_stats['error']}")
+
+def print_perf_stats(perf_stats):
+    """Print performance statistics"""
+    if perf_stats['success']:
+        print(f"Pool Test:           [OK] {perf_stats['queries']} queries in {perf_stats['time']:.3f}s")
+        print(f"Queries per Second:  {perf_stats['qps']:.1f} QPS")
+    else:
+        print(f"Pool Test:           [ERROR] {perf_stats['error']}")
+
 async def monitor_loop():
     """Main monitoring loop"""
     iteration = 0
@@ -104,27 +124,13 @@ async def monitor_loop():
             
             # Get database statistics
             db_stats = await get_db_stats()
-            
-            if db_stats['success']:
-                print(f"Database Status:     [CONNECTED]")
-                print(f"Total Connections:   {db_stats['total_connections']}")
-                print(f"Active Connections:  {db_stats['active_connections']}")
-                print(f"Idle Connections:    {db_stats['idle_connections']}")
-                print(f"Users in Database:   {db_stats['user_count']}")
-                print(f"Database Size:       {db_stats['db_size']}")
-            else:
-                print(f"Database Status:     [ERROR] {db_stats['error']}")
+            print_db_stats(db_stats)
             
             # Test pool performance every 5 iterations
             if iteration % 5 == 0:
                 print("\\nTesting Pool Performance...")
                 perf_stats = await test_pool_performance()
-                
-                if perf_stats['success']:
-                    print(f"Pool Test:           [OK] {perf_stats['queries']} queries in {perf_stats['time']:.3f}s")
-                    print(f"Queries per Second:  {perf_stats['qps']:.1f} QPS")
-                else:
-                    print(f"Pool Test:           [ERROR] {perf_stats['error']}")
+                print_perf_stats(perf_stats)
             
             print("-" * 60)
             print("Press Ctrl+C to stop monitoring...")

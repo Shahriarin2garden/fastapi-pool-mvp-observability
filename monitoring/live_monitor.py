@@ -60,7 +60,7 @@ async def simulate_api_load():
     try:
         async with aiohttp.ClientSession() as session:
             tasks = []
-            for i in range(5):
+            for _ in range(5):
                 tasks.append(session.get(f"{API_BASE_URL}/users/"))
             
             responses = await asyncio.gather(*tasks, return_exceptions=True)

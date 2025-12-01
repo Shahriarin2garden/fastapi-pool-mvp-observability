@@ -28,7 +28,7 @@ async def test_pool_scaling():
         **DB_CONFIG
     )
     
-    print(f"Pool created: min_size=2, max_size=10")
+    print("Pool created: min_size=2, max_size=10")
     print(f"Initial pool size: {pool.get_size()}")
     
     connections = []
@@ -58,7 +58,7 @@ async def test_pool_scaling():
                 print(f"❌ Error acquiring connection {i+1}: {e}")
                 break
         
-        print(f"\n📊 Final Results:")
+        print("\n📊 Final Results:")
         print(f"Connections acquired: {len(connections)}")
         print(f"Pool size: {pool.get_size()}")
         
@@ -80,6 +80,15 @@ async def test_concurrent_load_with_monitoring():
         **DB_CONFIG
     )
     
+    async def perform_query(conn, operation_num):
+        """Perform a query based on operation number"""
+        queries = [
+            "SELECT COUNT(*) FROM users",
+            "SELECT version()",
+            "SELECT current_timestamp"
+        ]
+        await conn.fetchval(queries[operation_num % 3])
+    
     async def worker(worker_id, duration=5):
         """Worker that performs database operations"""
         operations = 0
@@ -88,14 +97,7 @@ async def test_concurrent_load_with_monitoring():
         while time.time() - start_time < duration:
             try:
                 async with pool.acquire() as conn:
-                    # Simulate different types of queries
-                    if operations % 3 == 0:
-                        await conn.fetchval("SELECT COUNT(*) FROM users")
-                    elif operations % 3 == 1:
-                        await conn.fetchval("SELECT version()")
-                    else:
-                        await conn.fetchval("SELECT current_timestamp")
-                    
+                    await perform_query(conn, operations)
                     operations += 1
                     await asyncio.sleep(0.01)  # Small delay
                     
@@ -131,7 +133,8 @@ async def test_concurrent_load_with_monitoring():
                 await asyncio.sleep(1)
                 
             except asyncio.CancelledError:
-                break
+                # Cleanup and re-raise
+                raise
             except Exception as e:
                 print(f"Monitor error: {e}")
                 await asyncio.sleep(1)
@@ -155,6 +158,10 @@ async def test_concurrent_load_with_monitoring():
         await asyncio.sleep(2)  # Cool down between tests
     
     monitor_task.cancel()
+    try:
+        await monitor_task
+    except asyncio.CancelledError:
+        pass  # Expected when cancelling the task
     await pool.close()
 
 async def test_pool_exhaustion():
@@ -194,16 +201,18 @@ async def test_pool_exhaustion():
             print(f"Quick task {task_id} failed: {e}")
     
     # Start 5 long-running tasks to exhaust pool
-    long_tasks = [long_running_task(i) for i in range(5)]
+    long_tasks = [asyncio.create_task(long_running_task(i)) for i in range(5)]
     
     # Start them and wait a bit
-    asyncio.create_task(asyncio.gather(*long_tasks))
     await asyncio.sleep(2)  # Let them acquire connections
     
     # Now try quick tasks that should wait
     print("\nStarting quick tasks that should wait...")
     quick_tasks = [quick_task(i) for i in range(3)]
     await asyncio.gather(*quick_tasks)
+    
+    # Wait for long tasks to complete
+    await asyncio.gather(*long_tasks, return_exceptions=True)
     
     await pool.close()
 
@@ -217,7 +226,7 @@ async def main():
         await test_concurrent_load_with_monitoring()
         await test_pool_exhaustion()
         
-        print(f"\n🎉 All pool tests completed!")
+        print("\n🎉 All pool tests completed!")
         
     except Exception as e:
         print(f"❌ Test failed: {e}")

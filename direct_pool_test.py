@@ -37,7 +37,7 @@ async def test_direct_pool_fetch():
         print(f"   Fetched {len(users)} users in {elapsed:.3f} seconds")
         
         # Show first 10 users
-        print(f"\\n   First 10 users:")
+        print("\n   First 10 users:")
         for user in users[:10]:
             print(f"   ID: {user['id']:2d} | {user['name']:<20} | {user['email']}")
         
@@ -45,7 +45,7 @@ async def test_direct_pool_fetch():
             print(f"   ... and {len(users) - 10} more users")
         
         # Test 2: Concurrent fetches using pool
-        print(f"\\n2. Concurrent fetches (10 simultaneous requests):")
+        print("\n2. Concurrent fetches (10 simultaneous requests):")
         
         async def fetch_users_concurrent():
             async with pool.acquire() as conn:
@@ -65,13 +65,13 @@ async def test_direct_pool_fetch():
         print(f"   All requests returned {results[0][0]} users")
         
         # Test 3: Pool statistics
-        print(f"\\n3. Connection Pool Statistics:")
+        print("\n3. Connection Pool Statistics:")
         print(f"   Pool size: {pool.get_size()}")
-        print(f"   Pool min size: 2")
-        print(f"   Pool max size: 10")
+        print("   Pool min size: 2")
+        print("   Pool max size: 10")
         
         # Test 4: Batch operations
-        print(f"\\n4. Batch fetch test (fetch users in chunks):")
+        print("\n4. Batch fetch test (fetch users in chunks):")
         
         async def fetch_user_batch(offset, limit):
             async with pool.acquire() as conn:
@@ -97,7 +97,7 @@ async def test_direct_pool_fetch():
         print(f"   Batch processing time: {batch_elapsed:.3f} seconds")
         
         # Test 5: Connection reuse demonstration
-        print(f"\\n5. Connection reuse test:")
+        print("\n5. Connection reuse test:")
         
         connection_ids = []
         
@@ -119,8 +119,8 @@ async def test_direct_pool_fetch():
     finally:
         await pool.close()
     
-    print(f"\\n" + "=" * 60)
-    print(f"Direct pool test completed successfully!")
+    print("\n" + "=" * 60)
+    print("Direct pool test completed successfully!")
     print(f"Demonstrated efficient connection pooling with {len(users)} users.")
 
 if __name__ == "__main__":

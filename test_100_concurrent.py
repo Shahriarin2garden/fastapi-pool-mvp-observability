@@ -38,7 +38,7 @@ async def api_request(session, request_id, endpoint="/users/"):
     try:
         start_time = time.time()
         async with session.get(f"{API_BASE_URL}{endpoint}") as response:
-            data = await response.json()
+            await response.json()
             duration = time.time() - start_time
             return {
                 "request_id": request_id,
@@ -96,7 +96,7 @@ async def test_100_concurrent_requests():
         
         avg_response_time = sum(r["duration"] for r in successful_requests) / len(successful_requests) if successful_requests else 0
         
-        print(f"\n📈 RESULTS:")
+        print("\n📈 RESULTS:")
         print(f"Total Duration: {total_duration:.2f} seconds")
         print(f"Successful Requests: {len(successful_requests)}/100")
         print(f"Failed Requests: {len(failed_requests)}")
@@ -105,7 +105,7 @@ async def test_100_concurrent_requests():
         print(f"Average Response Time: {avg_response_time*1000:.1f}ms")
         
         # Show final database state
-        print(f"\n📊 Final Database State:")
+        print("\n📊 Final Database State:")
         final_state = await monitor_db_connections()
         if "error" not in final_state:
             print(f"Total Connections: {final_state['total_connections']}")
@@ -113,12 +113,12 @@ async def test_100_concurrent_requests():
             print(f"Idle Connections: {final_state['idle_connections']}")
         
         # Show some individual request details
-        print(f"\n🔍 Sample Request Details (first 10):")
+        print("\n🔍 Sample Request Details (first 10):")
         for i, result in enumerate(successful_requests[:10]):
             print(f"Request {result['request_id']}: {result['duration']*1000:.1f}ms")
         
         if failed_requests:
-            print(f"\n❌ Failed Requests:")
+            print("\n❌ Failed Requests:")
             for result in failed_requests[:5]:  # Show first 5 failures
                 if isinstance(result, dict):
                     print(f"Request {result.get('request_id', 'unknown')}: {result.get('error', 'Unknown error')}")
@@ -137,7 +137,7 @@ async def monitor_during_load():
                       f"Active: {state['active_connections']}, "
                       f"Idle: {state['idle_connections']}")
     except asyncio.CancelledError:
-        pass
+        raise
 
 async def test_sequential_vs_concurrent():
     """Compare sequential vs concurrent performance"""
@@ -158,28 +158,24 @@ async def test_sequential_vs_concurrent():
             sequential_results.append(result)
         sequential_duration = time.time() - start_time
         
-        successful_sequential = [r for r in sequential_results if r.get("success", False)]
-        
         print(f"Sequential Duration: {sequential_duration:.2f} seconds")
         print(f"Sequential RPS: {20/sequential_duration:.1f}")
         
         await asyncio.sleep(1)  # Brief pause
         
         # Test 2: Concurrent requests
-        print(f"\n🚀 Testing 20 Concurrent Requests...")
+        print("\n🚀 Testing 20 Concurrent Requests...")
         start_time = time.time()
         tasks = [api_request(session, i+1) for i in range(20)]
-        concurrent_results = await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks)
         concurrent_duration = time.time() - start_time
-        
-        successful_concurrent = [r for r in concurrent_results if r.get("success", False)]
         
         print(f"Concurrent Duration: {concurrent_duration:.2f} seconds")
         print(f"Concurrent RPS: {20/concurrent_duration:.1f}")
         
         # Comparison
         speedup = sequential_duration / concurrent_duration
-        print(f"\n📊 Performance Comparison:")
+        print("\n📊 Performance Comparison:")
         print(f"Speedup: {speedup:.1f}x faster with concurrent requests")
         print(f"Time Saved: {sequential_duration - concurrent_duration:.2f} seconds")
 
@@ -204,12 +200,12 @@ async def main():
         await asyncio.sleep(2)
         await test_sequential_vs_concurrent()
         
-        print(f"\n🎉 All tests completed successfully!")
-        print(f"\nKey Takeaways:")
-        print(f"• Connection pool limited database connections to max 10")
-        print(f"• All 100 requests completed successfully")
-        print(f"• Concurrent requests are much faster than sequential")
-        print(f"• Database remained stable under load")
+        print("\n🎉 All tests completed successfully!")
+        print("\nKey Takeaways:")
+        print("• Connection pool limited database connections to max 10")
+        print("• All 100 requests completed successfully")
+        print("• Concurrent requests are much faster than sequential")
+        print("• Database remained stable under load")
         
     except Exception as e:
         print(f"❌ Test failed: {e}")

@@ -132,11 +132,11 @@ async def main():
             
             # Test 3: Active connections monitoring
             success, result = await monitor_active_connections()
-            if success:
-                conn_info = f"Total: {result['total_connections']}, Active: {result['active_connections']}, Idle: {result['idle_connections']}"
+            if success and isinstance(result, dict):
+                conn_info = f"Total: {result.get('total_connections', 0)}, Active: {result.get('active_connections', 0)}, Idle: {result.get('idle_connections', 0)}"
                 print_status("Active Connections", True, conn_info)
             else:
-                print_status("Active Connections", False, result)
+                print_status("Active Connections", False, str(result))
             
             print("-" * 70)
             

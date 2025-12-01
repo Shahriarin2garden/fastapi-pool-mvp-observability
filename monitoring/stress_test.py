@@ -27,8 +27,6 @@ async def stress_test_pool(duration=10, concurrent_workers=20):
         )
         
         # Statistics tracking
-        total_requests = 0
-        errors = 0
         start_time = time.time()
         
         async def worker(worker_id):
@@ -117,7 +115,7 @@ async def monitor_progress(pool, start_time, duration):
             
             await asyncio.sleep(2)
     except asyncio.CancelledError:
-        pass
+        raise
 
 async def main():
     """Main function"""

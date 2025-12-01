@@ -99,7 +99,7 @@ def fetch_all_users():
 
 def test_concurrent_fetches():
     """Test concurrent fetches to demonstrate connection pooling"""
-    print(f"\nTesting concurrent fetches (connection pool demonstration)...")
+    print("\nTesting concurrent fetches (connection pool demonstration)...")
     print("=" * 60)
     
     import concurrent.futures
@@ -148,7 +148,7 @@ def test_concurrent_fetches():
     successful = [r for r in results if r['success']]
     failed = [r for r in results if not r['success']]
     
-    print(f"Concurrent fetch results:")
+    print("Concurrent fetch results:")
     print(f"- Total requests: {num_workers}")
     print(f"- Successful: {len(successful)}")
     print(f"- Failed: {len(failed)}")
@@ -165,12 +165,12 @@ def test_concurrent_fetches():
         print(f"- Requests per second: {len(successful) / total_elapsed:.1f} RPS")
         
         # Show individual results
-        print(f"\nIndividual request results:")
+        print("\nIndividual request results:")
         for result in sorted(successful, key=lambda x: x['worker_id']):
             print(f"  Worker {result['worker_id']:2d}: {result['user_count']} users in {result['response_time']:.3f}s (Thread: {result['thread_id']})")
     
     if failed:
-        print(f"\nFailed requests:")
+        print("\nFailed requests:")
         for result in failed:
             print(f"  Worker {result['worker_id']:2d}: {result['error']}")
 
@@ -182,7 +182,7 @@ def main():
     print(f"API Base URL: {API_BASE_URL}")
     
     # Step 1: Create users
-    created_users = create_users()
+    create_users()
     
     # Step 2: Fetch all users
     all_users = fetch_all_users()
