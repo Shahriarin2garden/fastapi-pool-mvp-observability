@@ -1,0 +1,92 @@
+{
+  "dashboard": {
+    "title": "FastAPI Connection Pool Monitoring",
+    "uid": "fastapi-pool-mvp",
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 0,
+    "refresh": "5s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[1m])",
+            "legendFormat": "{{method}} {{handler}}"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Request Latency (p95)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[1m]))",
+            "legendFormat": "p95"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Connection Pool Size",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "db_pool_size",
+            "legendFormat": "Current Pool Size"
+          },
+          {
+            "expr": "db_pool_max_size",
+            "legendFormat": "Max Pool Size"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Database Query Duration (p95)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(db_query_duration_seconds_bucket[1m]))",
+            "legendFormat": "p95 Query Time"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Connection Acquire Duration",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(db_connection_acquire_duration_seconds_bucket[1m]))",
+            "legendFormat": "p95 Acquire Time"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(db_query_errors_total[1m])",
+            "legendFormat": "Query Errors"
+          },
+          {
+            "expr": "rate(db_connection_errors_total[1m])",
+            "legendFormat": "Connection Errors"
+          }
+        ]
+      }
+    ]
+  }
+}

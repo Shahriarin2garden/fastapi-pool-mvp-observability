@@ -1,6 +1,7 @@
 import asyncpg
 from typing import Optional
 from app.config import settings
+from app.monitoring.metrics import db_pool_size, db_pool_max_size
 
 pool: Optional[asyncpg.pool.Pool] = None
 
@@ -19,6 +20,7 @@ async def init_pool():
             command_timeout=settings.COMMAND_TIMEOUT,
             max_inactive_connection_lifetime=300
         )
+        db_pool_max_size.set(settings.POOL_MAX_SIZE)
         print(f"Pool initialized successfully with {settings.POOL_MIN_SIZE}-{settings.POOL_MAX_SIZE} connections")
     except Exception as e:
         print(f"Failed to initialize pool: {e}")
