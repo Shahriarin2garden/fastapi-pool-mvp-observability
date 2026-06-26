@@ -60,27 +60,40 @@ This isn't a theoretical problem. It's the #1 reason Django/Flask apps fall over
 
 This project implements **connection pooling** using `asyncpg`'s built-in pool, which maintains a fixed set of reusable database connections:
 
-```
-100 concurrent HTTP requests
-        │
-        ▼
-┌──────────────────────┐
-│   asyncio event loop  │     Requests 1–10: get a connection immediately
-│   (single thread)     │     Requests 11–100: queue in asyncio awaitable
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│   asyncpg Pool       │     Maintains exactly 2–10 connections
-│   min_size=2         │     Scales up on demand, scales down after 300s idle
-│   max_size=10        │     Connection reuse: <1ms overhead vs 40ms
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│   PostgreSQL 15      │     Sees max 10 connections, not 100
-│   (stable, healthy)  │     Memory: ~100 MB, not ~1 GB
-└──────────────────────┘
+```mermaid
+flowchart TD
+    REQ["100 Concurrent HTTP Requests"]
+
+    subgraph EL["asyncio Event Loop (single thread)"]
+        direction TB
+        IMM["Requests 1–10\nget connection immediately"]
+        QUEUE["Requests 11–100\nqueue in asyncio awaitable"]
+    end
+
+    subgraph POOL["asyncpg Connection Pool"]
+        direction LR
+        C1["conn 1"] 
+        C2["conn 2"]
+        C3["conn 3"]
+        CDOT["..."]
+        C10["conn 10"]
+        note["min=2 · max=10\n&lt;1ms reuse overhead\nvs 40ms cold connect"]
+    end
+
+    PG["PostgreSQL 15\nSees max 10 conns\n~100MB memory (not 1GB)"]
+
+    RESULT["✅ 100% success · 0.62s · 160+ RPS"]
+
+    REQ --> EL
+    IMM -->|acquire| POOL
+    QUEUE -->|await free conn| POOL
+    POOL -->|max 10 connections| PG
+    PG --> RESULT
+
+    style POOL fill:#1a3a1a,stroke:#30a14e,color:#c9d1d9,stroke-width:2px
+    style PG fill:#1f3a5f,stroke:#4169E1,color:#c9d1d9
+    style RESULT fill:#1a3a1a,stroke:#30a14e,color:#c9d1d9
+    style EL fill:#0d1117,stroke:#8b949e,color:#c9d1d9
 ```
 
 **Measured result:** 100 concurrent requests → **0.62 seconds, 100% success rate, 10 DB connections used.**
@@ -92,34 +105,47 @@ This project implements **connection pooling** using `asyncpg`'s built-in pool, 
 
 ### System Overview
 
-```
-                    ┌──────────────────────────────────────────────────────┐
-                    │                   Docker Compose                      │
-                    │                                                       │
-                    │  ┌───────────────────────────────────────────────┐    │
-                    │  │              Application Layer                 │    │
-  HTTP Clients ────│──│                                                │    │
-  (port 8001)      │  │  ┌─────────┐  ┌──────────┐  ┌─────────────┐  │    │
-                    │  │  │ Routes  │─▶│ Services │─▶│  asyncpg    │  │    │
-                    │  │  │ (user)  │  │ (instrumented) │   Pool   │  │    │
-                    │  │  └─────────┘  └──────────┘  │  (2–10)    │  │    │
-                    │  │       │                      └─────┬───────┘  │    │
-                    │  │       │ Pydantic schemas            │         │    │
-                    │  │       │ validate I/O                │         │    │
-                    │  └───────────────────────────────┼─────┼─────────┘    │
-                    │                                  │     │              │
-                    │                                  │     ▼              │
-                    │  ┌────────────┐                   │  ┌────────────┐   │
-                    │  │ Prometheus │◀── /metrics ──────┘  │ PostgreSQL │   │
-                    │  │  (:9090)   │    (5s scrape)       │    15      │   │
-                    │  └─────┬──────┘                      │  (:5432)   │   │
-                    │        │                             └────────────┘   │
-                    │        ▼                                              │
-                    │  ┌────────────┐                                       │
-                    │  │  Grafana   │   Auto-provisioned dashboard          │
-                    │  │  (:3000)   │   6 panels, 5s refresh               │
-                    │  └────────────┘                                       │
-                    └──────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Clients
+        C1[HTTP Client]
+        C2[Load Test]
+        C3[Browser / Swagger]
+    end
+
+    subgraph DC["🐳 Docker Compose"]
+        subgraph App["FastAPI App · :8001"]
+            R[Routes<br/><i>user.py</i>]
+            SVC[Services<br/><i>user_service.py</i>]
+            POOL["asyncpg Pool<br/><i>min=2 · max=10</i>"]
+            SCH[Pydantic Schemas<br/><i>validate I/O</i>]
+            MET[Prometheus Metrics<br/><i>metrics.py</i>]
+        end
+
+        PG["🐘 PostgreSQL 15<br/>:5432"]
+        PROM["🔥 Prometheus<br/>:9090"]
+        GF["📊 Grafana<br/>:3000"]
+    end
+
+    C1 -->|HTTP :8001| R
+    C2 -->|HTTP :8001| R
+    C3 -->|HTTP :8001| R
+
+    R -->|delegates| SVC
+    R <-->|validates| SCH
+    SVC -->|acquire/release| POOL
+    SVC -->|observes| MET
+    POOL -->|max 10 conns| PG
+
+    App -->|GET /metrics every 5s| PROM
+    PROM -->|data source| GF
+
+    style App fill:#0d1117,stroke:#30a14e,color:#c9d1d9
+    style DC fill:#161b22,stroke:#21262d,color:#c9d1d9
+    style PG fill:#1f3a5f,stroke:#4169E1,color:#c9d1d9
+    style PROM fill:#3b1212,stroke:#E6522C,color:#c9d1d9
+    style GF fill:#2d1a00,stroke:#F46800,color:#c9d1d9
+    style POOL fill:#1a3a1a,stroke:#30a14e,color:#c9d1d9,stroke-width:2px
 ```
 
 ### Project Structure
@@ -181,28 +207,37 @@ fastapi-pool-mvp/
 
 ### Layered Architecture — Why It's Structured This Way
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Routes (user.py)                                    │
-│  HTTP-only concerns: status codes, exceptions,       │
-│  request parsing. No SQL, no pool access.            │
-├─────────────────────────────────────────────────────┤
-│  Services (user_service.py)                          │
-│  Data access + instrumentation. Acquires connections │
-│  from pool, runs SQL, records Prometheus metrics.    │
-│  Returns Pydantic models, not raw rows.              │
-├─────────────────────────────────────────────────────┤
-│  Pool (pool.py)                                      │
-│  Lifecycle management only. init_pool() on startup,  │
-│  close_pool() on shutdown. No business logic.        │
-├─────────────────────────────────────────────────────┤
-│  Config (config.py)                                  │
-│  Single source of truth for all settings.            │
-│  Reads from .env, validates types, provides defaults.│
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph HTTP["🌐 HTTP Layer — routes/user.py"]
+        RT["Status codes · Exception handling\nRequest parsing · No SQL, no pool access"]
+    end
+
+    subgraph SVC_LAYER["⚙️ Service Layer — services/user_service.py"]
+        SV["Data access · SQL execution\nPrometheus instrumentation\nReturns Pydantic models, not raw rows"]
+    end
+
+    subgraph POOL_LAYER["🔗 Pool Layer — db/pool.py"]
+        PL["init_pool() on startup\nclose_pool() on shutdown\nNo business logic — lifecycle only"]
+    end
+
+    subgraph CFG_LAYER["⚙️ Config Layer — config.py"]
+        CF["Pydantic BaseSettings\nReads .env · Validates types · Provides defaults\nSingle source of truth for all settings"]
+    end
+
+    HTTP -->|delegates to| SVC_LAYER
+    SVC_LAYER -->|acquire/release connections| POOL_LAYER
+    POOL_LAYER -->|reads settings| CFG_LAYER
+    HTTP -->|validates I/O via| SCH["📋 Schemas — schemas/user_schema.py\nUserCreate · UserResponse"]
+
+    style HTTP fill:#0d2137,stroke:#4169E1,color:#c9d1d9
+    style SVC_LAYER fill:#1a2a0d,stroke:#30a14e,color:#c9d1d9
+    style POOL_LAYER fill:#2a1a0d,stroke:#F46800,color:#c9d1d9
+    style CFG_LAYER fill:#1a1a2a,stroke:#8b949e,color:#c9d1d9
+    style SCH fill:#1f1f1f,stroke:#8b949e,color:#c9d1d9
 ```
 
-**What a recruiter should notice:** Routes don't know about the database. Services don't know about HTTP status codes. The pool module doesn't know about queries. Each layer has a single responsibility and a clean boundary.
+> **Key principle:** Routes don't know about the database. Services don't know about HTTP status codes. The pool module doesn't know about queries. Each layer has a single responsibility and a clean boundary.
 
 ### Design Decisions
 
@@ -252,57 +287,64 @@ async def fetch_users() -> List[UserResponse]:
 
 ### Pool Scaling Behavior
 
-```
-State: Idle (no traffic)
-┌─────────────────────────────────────┐
-│  Pool: [conn1] [conn2]             │  min_size=2 connections kept warm
-│  PostgreSQL: 2 backends             │
-└─────────────────────────────────────┘
+```mermaid
+stateDiagram-v2
+    direction LR
 
-State: Light load (5 concurrent requests)
-┌─────────────────────────────────────┐
-│  Pool: [C1•] [C2•] [C3•] [C4•] [C5•] [C6]  │  scaled to 6
-│  Requests: all served immediately    │
-│  PostgreSQL: 6 backends              │
-└─────────────────────────────────────┘
+    [*] --> Idle
 
-State: Heavy load (100 concurrent requests)
-┌─────────────────────────────────────┐
-│  Pool: [C1•] [C2•] [C3•] ... [C10•] │  max_size=10, all busy
-│  Queue: [R11] [R12] ... [R100]       │  90 requests waiting in asyncio
-│  PostgreSQL: 10 backends (stable)    │
-└─────────────────────────────────────┘
-   • = in use, Cx = connection, Rx = queued request
+    Idle: 💤 Idle\nPool: 2 conns (min_size)\nPostgreSQL: 2 backends
+    Light: 🟡 Light Load\nPool: 2–6 conns\nAll requests served immediately
+    Saturated: 🔴 Saturated\nPool: 10 conns (max_size)\n90 requests queued in asyncio
+    Cooldown: 🔵 Cooldown\nIdle conns recycled\nafter 300s inactive
 
-State: After load subsides (300s idle timeout)
-┌─────────────────────────────────────┐
-│  Pool: [conn1] [conn2]             │  scaled back to min_size=2
-│  PostgreSQL: 2 backends             │  idle connections recycled
-└─────────────────────────────────────┘
+    Idle --> Light: Traffic arrives\n(1–6 concurrent requests)
+    Light --> Saturated: Burst load\n(7–100 concurrent requests)
+    Saturated --> Light: Load drops\n(connections freed)
+    Light --> Cooldown: Traffic stops\n(idle timer starts)
+    Cooldown --> Idle: 300s elapsed\n(pool returns to min_size=2)
 ```
 
-### Timeline: 100 Concurrent Requests
+### Request Timeline: 100 Concurrent Requests
 
+```mermaid
+gantt
+    title 100 Concurrent Requests — Pool Batching (0ms to 620ms)
+    dateFormat  x
+    axisFormat  %Lms
+
+    section Batch 1 (conns 1-10)
+    Requests 1–10    : 0, 62
+
+    section Batch 2 (conn reuse)
+    Requests 11–20   : 62, 124
+
+    section Batch 3
+    Requests 21–30   : 124, 186
+
+    section Batch 4
+    Requests 31–40   : 186, 248
+
+    section Batch 5
+    Requests 41–50   : 248, 310
+
+    section Batch 6
+    Requests 51–60   : 310, 372
+
+    section Batch 7
+    Requests 61–70   : 372, 434
+
+    section Batch 8
+    Requests 71–80   : 434, 496
+
+    section Batch 9
+    Requests 81–90   : 496, 558
+
+    section Batch 10
+    Requests 91–100  : 558, 620
 ```
-Time 0ms       100 requests arrive simultaneously
-               Pool scales: 2 → 10 connections
-               Requests 1–10: acquire connection immediately
-               Requests 11–100: enter asyncio queue
 
-Time ~6ms      Each query takes ~6ms (SELECT with small table)
-               Requests 1–10 complete → connections returned to pool
-               Requests 11–20 dequeued → acquire freed connections
-
-Time ~12ms     Requests 11–20 complete → connections returned
-               Requests 21–30 dequeued
-
-  ... (10 batches of 10, each ~6ms) ...
-
-Time ~620ms    All 100 requests completed
-               Success rate: 100%
-               Peak connections: 10 (never exceeded)
-               PostgreSQL: stable, no connection storms
-```
+> 10 connections process 100 requests in 10 sequential batches. Each batch completes in ~62ms. Total: **620ms, 0 failures, 0 new connections opened after initial scale-up.**
 
 ### Connection Reuse — Why It Matters
 
