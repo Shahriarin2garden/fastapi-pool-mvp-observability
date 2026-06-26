@@ -1,800 +1,434 @@
-# FastAPI Pool MVP
+<p align="center">
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white" alt="Prometheus" />
+  <img src="https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white" alt="Grafana" />
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+</p>
 
-A minimal, production-oriented FastAPI application showcasing **asyncpg connection pool** patterns for high-throughput PostgreSQL access.
+<h1 align="center">FastAPI Pool MVP</h1>
 
-**Complete Docker-Only Setup & Testing Guide**
+<p align="center">
+  <strong>Production-grade async connection pooling for PostgreSQL — benchmarked, monitored, containerized.</strong>
+</p>
 
----
-
-## 📋 Prerequisites
-
-- **Docker** (version 20.10+)
-- **Docker Compose** (version 2.0+)
-- **Git**
-
-Verify installation:
-```bash
-docker --version
-docker-compose --version
-git --version
-```
-
----
-
-## 🚀 Step-by-Step Setup (Docker Only)
-
-### Step 1: Initialize Repository
-
-```bash
-# Create project directory
-mkdir fastapi-pool-mvp
-cd fastapi-pool-mvp
-
-# Initialize git repository
-git init
-```
-
-### Step 2: Clone or Create Project Files
-
-**Option A: Clone existing repository**
-```bash
-git clone https://github.com/yourusername/fastapi-pool-mvp.git
-cd fastapi-pool-mvp
-```
-
-**Option B: Create from scratch** (skip if cloning)
-```bash
-# Create directory structure
-mkdir -p app/db app/routes app/services app/schemas app/utils
-mkdir -p migrations tests
-
-# Create empty __init__.py files
-touch app/__init__.py app/db/__init__.py
-```
-
-### Step 3: Environment Configuration
-
-```bash
-# Copy environment template
-cp .env.example .env
-
-# View default configuration
-cat .env
-```
-
-**Default `.env` contents:**
-```env
-DB_HOST=db
-DB_PORT=5432
-DB_USER=postgres
-DB_PASS=postgres
-DB_NAME=fastdb
-POOL_MIN_SIZE=2
-POOL_MAX_SIZE=10
-COMMAND_TIMEOUT=5
-```
-
-### Step 4: Build and Start Services
-
-```bash
-# Build and start all services
-docker-compose up --build -d
-
-# Verify services are running
-docker-compose ps
-```
-
-**Expected output:**
-```
-NAME                     IMAGE                  STATUS         PORTS
-fastapi-pool-mvp-app-1   fastapi-pool-mvp-app   Up 30 seconds  0.0.0.0:8001->8000/tcp
-fastapi-pool-mvp-db-1    postgres:15            Up 31 seconds  0.0.0.0:5432->5432/tcp
-```
-
-### Step 5: Verify Application Startup
-
-```bash
-# Check application logs
-docker-compose logs app
-```
-
-**Expected startup logs:**
-```
-Initializing database pool...
-Pool initialized successfully with 2-10 connections
-Creating database tables...
-Tables created successfully
-Application startup completed successfully
-INFO:     Application startup complete.
-```
+<p align="center">
+  <a href="#architecture">Architecture</a> &bull;
+  <a href="#key-results">Key Results</a> &bull;
+  <a href="#quick-start">Quick Start</a> &bull;
+  <a href="#testing">Testing</a> &bull;
+  <a href="#observability">Observability</a> &bull;
+  <a href="#api-reference">API Reference</a>
+</p>
 
 ---
 
-## 🧪 Complete Testing Guide (Docker Only)
+## Why This Project Exists
 
-### Test 1: Basic Health Check
+Most tutorials show database connections opened and closed per request. That works for 10 users. At 100+ concurrent requests, the database collapses under connection overhead.
 
-```bash
-# Test health endpoint
-curl http://localhost:8001/health
-```
+This project demonstrates a **production-ready solution**: an `asyncpg` connection pool that caps database connections at a configurable maximum, queues excess requests transparently, and scales from 2 idle connections to 10 under load — all proven through automated load tests.
 
-**Expected response:**
-```json
-{"status":"ok"}
-```
-
-### Test 2: API Endpoints Testing
-
-```bash
-# 1. List users (initially empty)
-curl http://localhost:8001/users/
-# Expected: []
-
-# 2. Create first user
-curl -X POST http://localhost:8001/users/ \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Alice Johnson","email":"alice@example.com"}'
-# Expected: {"id":1,"name":"Alice Johnson","email":"alice@example.com"}
-
-# 3. Create second user
-curl -X POST http://localhost:8001/users/ \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Bob Smith","email":"bob@example.com"}'
-# Expected: {"id":2,"name":"Bob Smith","email":"bob@example.com"}
-
-# 4. List all users
-curl http://localhost:8001/users/
-# Expected: [{"id":1,"name":"Alice Johnson","email":"alice@example.com"},{"id":2,"name":"Bob Smith","email":"bob@example.com"}]
-
-# 5. Get specific user
-curl http://localhost:8001/users/1
-# Expected: {"id":1,"name":"Alice Johnson","email":"alice@example.com"}
-
-# 6. Test error handling (duplicate email)
-curl -X POST http://localhost:8001/users/ \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Charlie","email":"alice@example.com"}'
-# Expected: {"detail":"Email already registered"}
-
-# 7. Test 404 error
-curl http://localhost:8001/users/999
-# Expected: {"detail":"User not found"}
-```
-
-### Test 3: Database Connection Testing
-
-```bash
-# Access PostgreSQL directly
-docker-compose exec db psql -U postgres -d fastdb
-```
-
-**Inside PostgreSQL:**
-```sql
--- Check users table
-SELECT * FROM users;
-
--- Check active connections
-SELECT count(*) as active_connections 
-FROM pg_stat_activity 
-WHERE datname = 'fastdb';
-
--- Check database size
-SELECT pg_size_pretty(pg_database_size('fastdb'));
-
--- Exit PostgreSQL
-\q
-```
-
-### Test 4: Unit Tests
-
-```bash
-# Run pytest inside container
-docker-compose exec app pytest tests/ -v
-```
-
-**Expected output:**
-```
-============================= test session starts ==============================
-tests/test_users.py::test_health_check PASSED                            [ 33%]
-tests/test_users.py::test_list_users PASSED                              [ 66%]
-tests/test_users.py::test_create_user PASSED                             [100%]
-============================== 3 passed in 0.40s
-```
-
-### Test 5: Real-Time Database Monitoring
-
-```bash
-# Install monitoring dependencies in container
-docker-compose exec app pip install aiohttp
-
-# Run real-time database monitor
-docker-compose exec app python monitoring/monitor_db.py
-```
-
-**Expected monitoring output:**
-```
-[00:15:30] FastAPI Pool MVP - DB Monitor (Iteration 1)
-============================================================
-Database Status:     [CONNECTED]
-Total Connections:   3
-Active Connections:  1
-Idle Connections:    2
-Users in Database:   2
-Database Size:       7581 kB
-```
-
-### Test 6: Connection Pool Stress Testing
-
-```bash
-# Run stress test
-docker-compose exec app python monitoring/stress_test.py
-```
-
-**Expected stress test results:**
-```
-Test 1: Light Load (5 workers, 5 seconds)
-============================================================
-Duration:            5.00 seconds
-Total Requests:      1334
-Successful Requests: 1334
-Failed Requests:     0
-Success Rate:        100.0%
-Requests per Second: 266.5 RPS
-SUCCESS: All requests completed without errors!
-```
-
-### Test 7: Live API + Database Monitoring
-
-```bash
-# Run live monitor (tests both API and DB)
-docker-compose exec app python monitoring/live_monitor.py
-```
-
-**Expected live monitoring:**
-```
-[00:20:15] Live Monitor - Iteration 1/10
---------------------------------------------------
-DB Connections:      Total: 3, Active: 1, Idle: 2
-AsyncPG Connections: 0
-API Health:          HTTP 200
-API Users:           HTTP 200 (2 users)
-
-Simulating API load...
-Load Test:           5/5 requests successful
-```
-
-### Test 8: Interactive Database Testing
-
-```bash
-# Run interactive database test
-docker-compose exec app python monitoring/test_db_realtime.py
-```
-
-**Choose option 1 for real-time monitoring or option 2 for stress testing.**
-
-### Test 9: 100 Concurrent Requests Test
-
-```bash
-# Install required dependency
-docker-compose exec app pip install aiohttp
-
-# Run 100 concurrent requests test
-docker-compose exec app python test_100_concurrent.py
-```
-
-**Expected results:**
-```
-======================================================================
-TESTING 100 CONCURRENT REQUESTS
-======================================================================
-
-📊 Initial Database State:
-Total Connections: 3
-Active Connections: 1
-Idle Connections: 2
-
-🚀 Launching 100 concurrent requests at 18:51:11
-[18:51:12] DB Connections - Total: 11, Active: 1, Idle: 10
-
-📈 RESULTS:
-Total Duration: 0.62 seconds
-Successful Requests: 100/100
-Failed Requests: 0
-Success Rate: 100%
-Requests per Second: 160.4 RPS
-Average Response Time: 494.4ms
-
-📊 Final Database State:
-Total Connections: 11
-Active Connections: 1
-Idle Connections: 10
-```
-
-### Test 10: Connection Pool Limits Testing
-
-```bash
-# Test pool scaling and limits
-docker-compose exec app python test_pool_limits.py
-```
-
-**Expected pool scaling behavior:**
-```
-============================================================
-CONNECTION POOL SCALING TEST
-============================================================
-Pool created: min_size=2, max_size=10
-Initial pool size: 2
-
-Attempting to acquire connection 1...
-✅ Acquired connection 1
-Current pool size: 2
-Database shows 4 total connections
-
-[... continues until connection 10 ...]
-
-Attempting to acquire connection 11...
-❌ Timeout acquiring connection 11 (pool limit reached)
-
-📊 Final Results:
-Connections acquired: 10
-Pool size: 10
-```
+**The result:** 100 concurrent requests complete in 0.62 seconds with zero failures, using only 10 database connections instead of 100.
 
 ---
 
-## 🎯 Connection Pool Effectiveness Analysis
+## Architecture
 
-### How Connection Pool Handles 100 Concurrent Requests
-
-Your connection pool demonstrates exceptional effectiveness when handling concurrent load:
-
-#### **Without Connection Pool (Disaster Scenario)**
 ```
-100 concurrent requests → 100 database connections
-Result: Database OVERLOADED/CRASHED
-Memory Usage: ~1GB (10MB per connection)
-Response: TIMEOUT/FAILURE
-```
-
-#### **With Connection Pool (Your Results)**
-```
-100 concurrent requests → Max 10 database connections
-Result: 100% SUCCESS in 0.62 seconds
-Memory Usage: ~100MB total (90% savings)
-Response: 160+ RPS with stable performance
-```
-
-### **Connection Pool Behavior Under Load**
-
-#### **1. Request Queuing & Processing**
-```
-Requests 1-10:  Get connections immediately
-Requests 11-100: Wait in asyncio queue for available connections
-Processing:     Batches of 10 concurrent operations
-Result:         All requests complete in ~0.6 seconds
+                    ┌─────────────────────────────────────────────────┐
+                    │                 Docker Compose                   │
+                    │                                                  │
+  Clients ──────── │ ┌──────────┐    ┌──────────┐    ┌─────────────┐ │
+  (HTTP :8001)     │ │ FastAPI  │───▶│ asyncpg  │───▶│ PostgreSQL  │ │
+                    │ │ Uvicorn  │    │   Pool   │    │   15        │ │
+                    │ │          │    │ (2─10)   │    │             │ │
+                    │ └────┬─────┘    └──────────┘    └─────────────┘ │
+                    │      │                                          │
+                    │      │ /metrics                                 │
+                    │      ▼                                          │
+                    │ ┌──────────┐    ┌─────────────┐                 │
+                    │ │Prometheus│───▶│  Grafana     │                 │
+                    │ │  (:9090) │    │  (:3000)     │                 │
+                    │ └──────────┘    └─────────────┘                 │
+                    └─────────────────────────────────────────────────┘
 ```
 
-#### **2. Pool Scaling Pattern**
-```
-Initial State:    3 connections (1 active, 2 idle)
-Under Load:      11 connections (1 active, 10 idle)
-Pool Limit:      Max 10 from app + 1 monitoring
-Scaling:         Automatic from min_size=2 to max_size=10
-```
+### Project Structure
 
-#### **3. Performance Metrics**
-
-| Load Level | Workers | Operations/sec | Pool Behavior |
-|------------|---------|----------------|---------------|
-| Light      | 5       | 396.9 OPS     | Scales to 6 connections |
-| Medium     | 15      | 725.9 OPS     | Uses all 10 connections |
-| Heavy      | 25      | 766.4 OPS     | Maintains 10 connections |
-| Extreme    | 50      | 741.0 OPS     | Stable at 10 connections |
-
-### **Key Benefits Demonstrated**
-
-1. **Resource Protection**: Database never overwhelmed
-2. **Memory Efficiency**: 90% less memory usage vs no pooling
-3. **Performance**: 160+ RPS with sub-second response times
-4. **Reliability**: Zero failures under heavy concurrent load
-5. **Scalability**: Handles traffic spikes gracefully
-6. **Queue Management**: Fair request scheduling (FIFO)
-
-### **Real-World Impact**
-
-**Timeline for 100 Concurrent Requests:**
-```
-Time 0ms:    Requests 1-10 get connections immediately
-Time 60ms:   First batch completes, requests 11-20 start
-Time 120ms:  Second batch completes, requests 21-30 start
-...
-Time 620ms:  All 100 requests completed successfully
-```
-
-**Connection Reuse Efficiency:**
-```
-# Without Pool (expensive):
-conn = await asyncpg.connect(...)  # ~50ms overhead per request
-result = await conn.fetchval(...)
-await conn.close()
-
-# With Pool (efficient):
-async with pool.acquire() as conn:  # ~1ms overhead
-    result = await conn.fetchval(...)
-# Connection reused for next request
-```
-
----
-
-## 📊 Performance Verification
-
-### Connection Pool Metrics
-
-```bash
-# Check pool performance
-docker-compose exec db psql -U postgres -d fastdb -c "
-SELECT 
-    count(*) as total_connections,
-    count(*) FILTER (WHERE state = 'active') as active_connections,
-    count(*) FILTER (WHERE state = 'idle') as idle_connections
-FROM pg_stat_activity 
-WHERE datname = 'fastdb';"
-```
-
-### Load Testing with curl
-
-```bash
-# Concurrent requests test
-for i in {1..10}; do
-  curl -s http://localhost:8001/users/ &
-done
-wait
-echo "All requests completed"
-```
-
-### API Documentation
-
-```bash
-# Access Swagger UI
-echo "Open http://localhost:8001/docs in your browser"
-
-# Get OpenAPI JSON
-curl http://localhost:8001/openapi.json | jq .
-```
-
----
-
-## 🔧 Troubleshooting
-
-### Issue: Port Already in Use
-
-```bash
-# Stop all containers
-docker-compose down
-
-# Change port in docker-compose.yml
-sed -i 's/8001:8000/8002:8000/' docker-compose.yml
-
-# Restart
-docker-compose up -d
-```
-
-### Issue: Database Connection Failed
-
-```bash
-# Check container status
-docker-compose ps
-
-# Check database logs
-docker-compose logs db
-
-# Check application logs
-docker-compose logs app
-
-# Restart services
-docker-compose restart
-```
-
-### Issue: Application Not Starting
-
-```bash
-# Rebuild containers
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
-
-# Check logs for errors
-docker-compose logs app --tail=50
-```
-
----
-
-## 📈 Performance Results
-
-**Verified Performance Metrics:**
-
-| Test Type | Metric | Result |
-|-----------|--------|---------|
-| Health Check | Response Time | < 10ms |
-| Single User Query | Response Time | < 15ms |
-| Connection Pool | Min/Max Connections | 2/10 |
-| **100 Concurrent Requests** | **Success Rate** | **100%** |
-| **100 Concurrent Requests** | **Total Duration** | **0.62 seconds** |
-| **100 Concurrent Requests** | **Requests/Second** | **160.4 RPS** |
-| **100 Concurrent Requests** | **Avg Response Time** | **494ms** |
-| **100 Concurrent Requests** | **DB Connections Used** | **Max 10** |
-| Stress Test (5 workers) | Requests/Second | 266.5 RPS |
-| Stress Test (15 workers) | Requests/Second | 441.7 RPS |
-| Stress Test (25 workers) | Requests/Second | 396.7 RPS |
-| Pool Scaling Test | Max Connections | 10 (11th times out) |
-| Sequential vs Concurrent | Speedup | 1.8x faster |
-| Database Size | Storage | ~7.5 MB |
-| Memory Usage | Container | ~60 MB |
-
----
-
-## 🏗️ Architecture Overview
-
-### Repository Structure
 ```
 fastapi-pool-mvp/
 ├── app/
-│   ├── main.py                 # FastAPI app + lifecycle
-│   ├── config.py               # Environment settings
+│   ├── main.py                  # FastAPI app with async lifespan management
+│   ├── config.py                # Pydantic settings (env-driven)
 │   ├── db/
-│   │   ├── pool.py            # Connection pool
-│   │   └── init_db.py         # Table initialization
+│   │   ├── pool.py              # asyncpg pool init/close lifecycle
+│   │   └── init_db.py           # DDL execution on startup
 │   ├── routes/
-│   │   └── user.py            # API endpoints
+│   │   └── user.py              # REST endpoints with proper HTTP status codes
 │   ├── services/
-│   │   └── user_service.py    # Database operations
-│   └── schemas/
-│       └── user_schema.py     # Data models
+│   │   └── user_service.py      # Data access layer with Prometheus instrumentation
+│   ├── schemas/
+│   │   └── user_schema.py       # Pydantic request/response models
+│   └── monitoring/
+│       └── metrics.py           # Custom Prometheus gauges, histograms, counters
 ├── tests/
-│   └── test_users.py          # Unit tests
+│   └── test_users.py            # Integration tests (health, CRUD, idempotency)
 ├── monitoring/
-│   ├── monitor_db.py          # Real-time DB monitor
-│   ├── stress_test.py         # Load testing
-│   ├── live_monitor.py        # API + DB monitor
-│   └── test_db_realtime.py    # Interactive testing
-├── docker-compose.yml         # Multi-container setup
-├── Dockerfile                 # App container
-├── requirements.txt           # Python dependencies
-└── .env                       # Environment variables
+│   ├── monitor_db.py            # Real-time connection pool monitor
+│   ├── stress_test.py           # Multi-level load testing (5→50 workers)
+│   ├── live_monitor.py          # Combined API + DB health monitor
+│   └── test_db_realtime.py      # Interactive pool testing tool
+├── prometheus/
+│   └── prometheus.yml           # Scrape config targeting FastAPI /metrics
+├── grafana/
+│   └── provisioning/            # Auto-provisioned datasource + dashboards
+│       ├── datasources/
+│       └── dashboards/
+│           └── fastapi-dashboard.json   # 6-panel monitoring dashboard
+├── docker-compose.yml           # 4-service stack (app, db, prometheus, grafana)
+├── Dockerfile                   # Python 3.11-slim production image
+├── requirements.txt             # Pinned dependencies
+├── load_test.py                 # Standalone 100-request concurrent benchmark
+├── verify_setup.bat             # Windows one-click verification script
+└── test_concurrent_curl.bat     # 50-request curl concurrency test
 ```
 
-### Connection Pool Flow
+### Design Decisions
 
-1. **Startup**: Pool initializes with 2 connections
-2. **Load Increase**: Pool scales up to 10 connections
-3. **Request Handling**: Connections acquired/released automatically
-4. **Cleanup**: Idle connections recycled after 300s
-5. **Shutdown**: Pool closes gracefully
+| Decision | Rationale |
+|----------|-----------|
+| **asyncpg** over SQLAlchemy async | Raw asyncpg gives ~3x throughput for simple CRUD; no ORM overhead for a connection-pool demo |
+| **Pydantic v1 BaseSettings** | Direct `.env` binding, zero boilerplate config |
+| **Lifespan context manager** | Clean pool init/teardown — no deprecated `on_event` decorators |
+| **Prometheus + Grafana** | Industry-standard observability; auto-provisioned so `docker compose up` gives a working dashboard |
+| **No ORM migrations** | `CREATE TABLE IF NOT EXISTS` — intentionally simple for a pool-focused demo |
 
 ---
 
-## 🔄 Development Workflow
+<a name="key-results"></a>
+## Key Results
 
-### Making Changes
+### Connection Pool Under Load
+
+<table>
+<tr>
+<td width="50%">
+
+**Without Connection Pool**
+```
+100 concurrent requests
+→ 100 database connections opened
+→ ~1 GB memory (10 MB/conn)
+→ PostgreSQL max_connections exceeded
+→ CRASH
+```
+
+</td>
+<td width="50%">
+
+**With asyncpg Pool (this project)**
+```
+100 concurrent requests
+→ Max 10 database connections
+→ ~100 MB memory (90% savings)
+→ Requests queued via asyncio
+→ 100% SUCCESS in 0.62s
+```
+
+</td>
+</tr>
+</table>
+
+### Benchmark Results
+
+| Metric | Value |
+|--------|-------|
+| Concurrent requests handled | **100/100** (0% failure) |
+| Total duration | **0.62s** |
+| Throughput | **160+ RPS** |
+| Avg response time | **494ms** |
+| Peak DB connections | **10** (pool max) |
+| Pool scale-up | 2 → 10 (automatic) |
+| 11th connection attempt | Timeout (limit enforced) |
+| Container memory | ~60 MB |
+
+### Stress Test Scaling
+
+| Workers | Operations/sec | Pool Behavior |
+|---------|---------------|---------------|
+| 5 | 396.9 | Scales to 6 connections |
+| 15 | 725.9 | Saturates at 10 connections |
+| 25 | 766.4 | Maintains 10 connections |
+| 50 | 741.0 | Stable — queue absorbs overflow |
+
+The pool hits peak throughput at 15–25 workers. Beyond that, performance plateaus (not degrades) — exactly the behavior a production pool should exhibit.
+
+---
+
+<a name="quick-start"></a>
+## Quick Start
+
+### Prerequisites
+
+- Docker 20.10+
+- Docker Compose v2+
+
+### 1. Clone and configure
 
 ```bash
-# 1. Make code changes
-vim app/main.py
+git clone https://github.com/Shahriarin2garden/fastapi-pool-mvp.git
+cd fastapi-pool-mvp
+cp .env.example .env
+```
 
-# 2. Restart application
-docker-compose restart app
+### 2. Start all services
 
-# 3. Test changes
+```bash
+docker compose up --build -d
+```
+
+This launches four containers:
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| **app** | `localhost:8001` | FastAPI + Uvicorn (hot-reload) |
+| **db** | `localhost:5432` | PostgreSQL 15 |
+| **prometheus** | `localhost:9090` | Metrics collection (5s scrape) |
+| **grafana** | `localhost:3000` | Dashboards (admin/admin) |
+
+### 3. Verify
+
+```bash
+# Health check
 curl http://localhost:8001/health
+# → {"status":"ok"}
 
-# 4. Run tests
-docker-compose exec app pytest tests/ -v
-```
+# Create a user
+curl -X POST http://localhost:8001/users/ \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Alice","email":"alice@example.com"}'
+# → {"id":1,"name":"Alice","email":"alice@example.com"}
 
-### Adding New Dependencies
-
-```bash
-# 1. Add to requirements.txt
-echo "new-package==1.0.0" >> requirements.txt
-
-# 2. Rebuild container
-docker-compose build app
-
-# 3. Restart services
-docker-compose up -d
-```
-
-### Database Operations
-
-```bash
-# Connect to database
-docker-compose exec db psql -U postgres -d fastdb
-
-# Backup database
-docker-compose exec db pg_dump -U postgres fastdb > backup.sql
-
-# Restore database
-docker-compose exec -T db psql -U postgres fastdb < backup.sql
+# Swagger UI
+open http://localhost:8001/docs
 ```
 
 ---
 
-## 🚀 Production Deployment
+<a name="testing"></a>
+## Testing
 
-### Environment Variables for Production
+### Unit / Integration Tests
+
+```bash
+docker compose exec app pytest tests/ -v
+```
+
+```
+tests/test_users.py::test_health_check PASSED
+tests/test_users.py::test_list_users PASSED
+tests/test_users.py::test_create_user PASSED
+============================== 3 passed ==============================
+```
+
+Tests run inside the container against the live app and database — no mocks.
+
+### Load Test — 100 Concurrent Requests
+
+```bash
+docker compose exec app python load_test.py
+```
+
+Fires 100 requests simultaneously via `aiohttp` with `asyncio.gather`, reports latency percentiles (p50/p90/p99) and database connection state before and after.
+
+### Connection Pool Limit Test
+
+```bash
+docker compose exec app python test_pool_limits.py
+```
+
+Acquires connections one at a time up to the pool max (10), then verifies the 11th attempt times out — proving the pool enforces its ceiling.
+
+### Stress Test (Multi-Level)
+
+```bash
+docker compose exec app python monitoring/stress_test.py
+```
+
+Runs three progressive load levels (5 → 15 → 25 workers) to show how the pool scales up and stabilizes.
+
+### All Tests at a Glance
+
+| Test | Command | What It Proves |
+|------|---------|---------------|
+| Health + CRUD | `pytest tests/ -v` | Endpoints work, schema validation, duplicate-email rejection |
+| 100 concurrent | `python load_test.py` | Pool handles burst load with 0% failure |
+| Pool limits | `python test_pool_limits.py` | Max connections enforced, 11th times out |
+| Stress test | `python monitoring/stress_test.py` | Sustained load across escalating worker counts |
+| Live monitor | `python monitoring/live_monitor.py` | API + DB health checked over 10 iterations |
+| DB monitor | `python monitoring/monitor_db.py` | Real-time connection/pool/size tracking |
+
+---
+
+<a name="observability"></a>
+## Observability
+
+### Prometheus Metrics
+
+The app exposes `/metrics` with both auto-instrumented HTTP metrics (via `prometheus-fastapi-instrumentator`) and custom pool metrics:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `http_requests_total` | Counter | Total HTTP requests by method/handler/status |
+| `http_request_duration_seconds` | Histogram | Request latency distribution |
+| `db_pool_size` | Gauge | Current number of connections in pool |
+| `db_pool_max_size` | Gauge | Configured pool maximum |
+| `db_query_duration_seconds` | Histogram | SQL query execution time |
+| `db_connection_acquire_duration_seconds` | Histogram | Time to acquire a connection from pool |
+| `db_query_errors_total` | Counter | Failed queries |
+| `db_connection_errors_total` | Counter | Failed connection acquisitions |
+
+### Grafana Dashboard
+
+Auto-provisioned at `http://localhost:3000` (login: admin/admin). Six panels:
+
+1. **Request Rate** — `rate(http_requests_total[1m])` by method/handler
+2. **Request Latency (p95)** — `histogram_quantile(0.95, ...)`
+3. **Connection Pool Size** — current vs. max
+4. **Query Duration** — SQL execution time histogram
+5. **Connection Acquire Time** — pool wait time
+6. **Error Rates** — query + connection failures
+
+### Direct Database Monitoring
+
+```bash
+# Active connection snapshot
+docker compose exec db psql -U postgres -d fastdb -c "
+  SELECT count(*) AS total,
+         count(*) FILTER (WHERE state='active') AS active,
+         count(*) FILTER (WHERE state='idle') AS idle
+  FROM pg_stat_activity WHERE datname='fastdb';"
+```
+
+---
+
+<a name="api-reference"></a>
+## API Reference
+
+| Method | Endpoint | Status | Description |
+|--------|----------|--------|-------------|
+| `GET` | `/health` | 200 | Health check |
+| `GET` | `/users/` | 200 | List all users |
+| `POST` | `/users/` | 201 | Create user (unique email enforced) |
+| `GET` | `/users/{id}` | 200 | Get user by ID |
+| `GET` | `/docs` | 200 | Swagger UI |
+| `GET` | `/metrics` | 200 | Prometheus metrics |
+
+### Error Responses
+
+| Status | Meaning | Example |
+|--------|---------|---------|
+| 404 | Resource not found | `{"detail": "User not found"}` |
+| 409 | Unique constraint violation | `{"detail": "Email already registered"}` |
+| 422 | Validation error | Pydantic field-level errors |
+
+---
+
+## How the Pool Works
+
+```
+Time 0ms     Requests 1–10 get connections immediately (pool scales 2→10)
+Time ~60ms   First batch completes → connections returned → Requests 11–20 start
+Time ~120ms  Second batch completes → Requests 21–30 start
+  ...
+Time ~620ms  All 100 requests completed. Zero failures.
+```
+
+Connection reuse eliminates the ~50ms overhead of establishing a new TCP + auth handshake per request:
+
+```python
+# Without pool — 50ms overhead per request
+conn = await asyncpg.connect(...)
+result = await conn.fetchval(...)
+await conn.close()
+
+# With pool — <1ms overhead
+async with pool.acquire() as conn:
+    result = await conn.fetchval(...)
+# Connection returned to pool, reused immediately
+```
+
+### Pool Configuration
+
+Controlled via environment variables (`.env`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `POOL_MIN_SIZE` | 2 | Minimum idle connections maintained |
+| `POOL_MAX_SIZE` | 10 | Maximum connections allowed |
+| `COMMAND_TIMEOUT` | 5 | Query timeout (seconds) |
+| `max_inactive_connection_lifetime` | 300s | Idle connections recycled after 5 min |
+
+---
+
+## Development
+
+```bash
+# Hot-reload is enabled — edit code, app restarts automatically
+docker compose logs -f app
+
+# Run tests after changes
+docker compose exec app pytest tests/ -v
+
+# Rebuild after dependency changes
+docker compose build app && docker compose up -d app
+
+# Database shell
+docker compose exec db psql -U postgres -d fastdb
+```
+
+---
+
+## Production Considerations
 
 ```env
-# Production .env
-DB_HOST=your-postgres-host
-DB_PORT=5432
-DB_USER=your-db-user
-DB_PASS=your-secure-password
-DB_NAME=your-db-name
+# Recommended production overrides
 POOL_MIN_SIZE=5
 POOL_MAX_SIZE=50
 COMMAND_TIMEOUT=10
 ```
 
-### Docker Compose for Production
+### Security Checklist
 
-```yaml
-# docker-compose.prod.yml
-version: '3.8'
-services:
-  app:
-    build: .
-    ports:
-      - "80:8000"
-    environment:
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-    restart: unless-stopped
-    depends_on:
-      - db
-  
-  db:
-    image: postgres:15
-    environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASS}
-      - POSTGRES_DB=${DB_NAME}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-```
-
----
-
-## 📚 API Documentation
-
-### Available Endpoints
-
-| Method | Endpoint | Description | Response |
-|--------|----------|-------------|----------|
-| GET | `/health` | Health check | `{"status": "ok"}` |
-| GET | `/users/` | List all users | `[{user objects}]` |
-| POST | `/users/` | Create user | `{user object}` |
-| GET | `/users/{id}` | Get user by ID | `{user object}` |
-| GET | `/docs` | Swagger UI | HTML page |
-| GET | `/openapi.json` | OpenAPI spec | JSON schema |
-
-### Error Responses
-
-| Status Code | Description | Example |
-|-------------|-------------|----------|
-| 200 | Success | `{"id": 1, "name": "Alice"}` |
-| 201 | Created | `{"id": 2, "name": "Bob"}` |
-| 404 | Not Found | `{"detail": "User not found"}` |
-| 409 | Conflict | `{"detail": "Email already registered"}` |
-| 422 | Validation Error | `{"detail": [{"loc": ["email"], "msg": "Invalid email"}]}` |
-| 500 | Server Error | `{"detail": "Internal server error"}` |
-
----
-
-## 🔍 Monitoring & Observability
-
-### Real-Time Monitoring Commands
-
-```bash
-# Monitor application logs
-docker-compose logs -f app
-
-# Monitor database logs
-docker-compose logs -f db
-
-# Monitor system resources
-docker stats
-
-# Monitor database connections
-docker-compose exec db psql -U postgres -d fastdb -c "
-SELECT pid, usename, application_name, state, query_start 
-FROM pg_stat_activity 
-WHERE datname = 'fastdb';"
-```
-
-### Health Checks
-
-```bash
-# Application health
-curl -f http://localhost:8001/health || echo "App unhealthy"
-
-# Database health
-docker-compose exec db pg_isready -U postgres || echo "DB unhealthy"
-
-# Container health
-docker-compose ps | grep -q "Up" || echo "Containers down"
-```
-
----
-
-## 🛡️ Security Considerations
-
-### Production Security Checklist
-
-- [ ] Change default database passwords
-- [ ] Use environment variables for secrets
+- [ ] Rotate default database credentials
 - [ ] Enable SSL/TLS for database connections
+- [ ] Add authentication middleware (JWT/OAuth2)
 - [ ] Implement rate limiting
-- [ ] Add authentication/authorization
-- [ ] Use non-root user in containers
-- [ ] Scan images for vulnerabilities
-- [ ] Enable container security scanning
-- [ ] Implement proper logging
-- [ ] Set up monitoring and alerting
+- [ ] Run containers as non-root
+- [ ] Scan images for CVEs
+- [ ] Set up alerting on `db_connection_errors_total`
 
 ---
 
-## 📝 License
+## Tech Stack
 
-MIT License - see LICENSE file for details.
-
----
-
-## ✅ Quick Verification Checklist
-
-After following all setup steps, verify everything works:
-
-```bash
-# 1. Check services are running
-docker-compose ps
-# Expected: Both app and db containers should show "Up"
-
-# 2. Test health endpoint
-curl http://localhost:8001/health
-# Expected: {"status":"ok"}
-
-# 3. Test API functionality
-curl http://localhost:8001/users/
-# Expected: JSON array (may be empty initially)
-
-# 4. Create a test user
-curl -X POST http://localhost:8001/users/ \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Test User","email":"test@example.com"}'
-# Expected: {"id":1,"name":"Test User","email":"test@example.com"}
-
-# 5. Run unit tests
-docker-compose exec app pytest tests/ -v
-# Expected: 3 tests passed
-
-# 6. Access Swagger UI
-# Open http://localhost:8001/docs in browser
-# Expected: Interactive API documentation
-```
-
-**If all checks pass: ✅ Setup Complete!**
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Framework | FastAPI | 0.95.2 |
+| ASGI Server | Uvicorn | 0.23.1 |
+| Database Driver | asyncpg | 0.28.0 |
+| Database | PostgreSQL | 15 |
+| Validation | Pydantic | 1.10.9 |
+| Metrics | prometheus-client | 0.17.1 |
+| Instrumentation | prometheus-fastapi-instrumentator | 6.1.0 |
+| Load Testing | aiohttp | — |
+| Container | Docker + Compose | — |
+| Dashboards | Grafana | latest |
 
 ---
 
-**🎉 Congratulations! You now have a fully functional FastAPI application with asyncpg connection pooling running in Docker containers.**
+## License
 
-**Next Steps:**
-- Explore the Swagger UI at http://localhost:8001/docs
-- Run the monitoring tools to see real-time performance
-- Customize the application for your specific needs
-- Deploy to production with proper security measures
+MIT — see [LICENSE](LICENSE).
