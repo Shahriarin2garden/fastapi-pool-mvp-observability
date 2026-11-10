@@ -3,6 +3,7 @@ set -euo pipefail
 
 if [[ -f .env ]]; then
   set -a
+  # shellcheck source=/dev/null
   . ./.env
   set +a
 fi
@@ -13,25 +14,29 @@ fail() {
   exit 1
 }
 
-if [[ "$(docker compose ps --status running --services | grep -Fx grafana || true)" != "grafana" ]]; then
+if ! docker compose ps --status running --services | grep -Fxq grafana; then
   docker compose logs grafana
   fail "Grafana failed to start (check alert provisioning YAML)"
 fi
+echo "PASS: Grafana container is running"
 
 order_payload='{"customer_email":"smoke@example.com","item":"smoke-test","quantity":1,"amount_cents":100}'
 order_status="$(curl -sS -o /dev/null -w '%{http_code}' \
   -H 'Content-Type: application/json' -d "$order_payload" \
   http://127.0.0.1:8001/api/orders)" || fail "POST /api/orders request failed"
 [[ "$order_status" == "201" ]] || fail "POST /api/orders expected 201, got $order_status"
+echo "PASS: POST /api/orders returns 201"
 
 failure_status="$(curl -sS -o /dev/null -w '%{http_code}' \
   -H 'Content-Type: application/json' -d "$order_payload" \
   'http://127.0.0.1:8001/api/orders?simulate_failure=true')" || fail "POST /api/orders?simulate_failure=true request failed"
 [[ "$failure_status" == "500" ]] || fail "POST /api/orders?simulate_failure=true expected 500, got $failure_status"
+echo "PASS: POST /api/orders?simulate_failure=true returns 500"
 
 metrics="$(curl -fsS http://127.0.0.1:8001/metrics)" || fail "GET /metrics request failed"
 grep -q 'orders_created_total' <<<"$metrics" || fail "GET /metrics missing orders_created_total"
 grep -q 'order_request_duration_seconds_bucket' <<<"$metrics" || fail "GET /metrics missing order_request_duration_seconds_bucket"
+echo "PASS: GET /metrics contains order metrics"
 
 targets_url='http://127.0.0.1:9090/api/v1/targets'
 targets_ok=false
@@ -51,21 +56,25 @@ for _ in $(seq 1 30); do
   sleep 2
 done
 [[ "$targets_ok" == true ]] || fail "Prometheus targets did not show node-exporter and order-api healthy"
+echo "PASS: Prometheus node-exporter and order-api targets are up"
 
 datasources="$(curl -fsS -u "${GF_ADMIN_USER}:${GF_ADMIN_PASSWORD}" \
   http://127.0.0.1:3000/api/datasources)" || fail "Grafana datasources request failed"
 [[ "$(jq 'length' <<<"$datasources" 2>/dev/null || echo 0)" == "2" ]] ||
   fail "Grafana /api/datasources expected 2 datasources"
+echo "PASS: Grafana has 2 datasources"
 
 dashboards="$(curl -fsS -u "${GF_ADMIN_USER}:${GF_ADMIN_PASSWORD}" \
   'http://127.0.0.1:3000/api/search?type=dash-db')" || fail "Grafana dashboard search failed"
 [[ "$(jq 'length' <<<"$dashboards" 2>/dev/null || echo 0)" == "2" ]] ||
   fail "Grafana /api/search?type=dash-db expected 2 dashboards"
+echo "PASS: Grafana has 2 dashboards"
 
 rules="$(curl -fsS -u "${GF_ADMIN_USER}:${GF_ADMIN_PASSWORD}" \
   http://127.0.0.1:3000/api/v1/provisioning/alert-rules)" || fail "Grafana alert rules request failed"
 grep -q 'OrderAPIDown' <<<"$rules" || fail "Grafana alert rules missing OrderAPIDown"
 [[ "$(jq 'length' <<<"$rules" 2>/dev/null || echo 0)" -gt 0 ]] ||
   fail "Grafana alert rules list is empty"
+echo "PASS: Grafana alert rules include OrderAPIDown"
 
 echo "PASS: CI smoke checks"
