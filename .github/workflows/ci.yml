@@ -59,11 +59,7 @@ jobs:
             curl --fail --silent "$endpoint" >/dev/null
           done
       - name: Run application smoke checks
-        run: |
-          set -a
-          . ./.env
-          set +a
-          bash scripts/ci-smoke.sh
+        run: bash scripts/ci-smoke.sh
       - if: failure()
         run: docker compose logs --tail=200
       - if: always()
