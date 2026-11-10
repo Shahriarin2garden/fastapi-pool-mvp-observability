@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-generator
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-generator
+  template:
+    metadata:
+      labels:
+        app: log-generator
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: log-generator
+          image: busybox:1.36
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              i=0
+              while true; do
+                i=$((i + 1))
+                now=$(date -u +%FT%TZ)
+                if [ $((i % 7)) -eq 0 ]; then
+                  echo "timestamp=$now level=ERROR event=payment_failed order_id=$i" >&2
+                elif [ $((i % 3)) -eq 0 ]; then
+                  echo "timestamp=$now level=WARN event=retrying order_id=$i" >&2
+                else
+                  echo "timestamp=$now level=INFO event=order_processed order_id=$i latency_ms=$((i % 50 + 5))"
+                fi
+                sleep 2
+              done
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi
