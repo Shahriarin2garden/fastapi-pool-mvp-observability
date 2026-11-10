@@ -611,7 +611,7 @@ services:
     image: postgres:15
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${DB_PASS}
       POSTGRES_DB: fastdb
     ports:
       - "5432:5432"
@@ -642,7 +642,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
@@ -719,7 +719,7 @@ Update `docker-compose.yml` to remove provisioning complexity:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD}
     volumes:
       - grafana_data:/var/lib/grafana
     networks:
@@ -796,7 +796,7 @@ curl http://localhost:8001/metrics
 1. Open http://localhost:3000 in browser
 2. Login with:
    - Username: `admin`
-   - Password: `admin`
+   - Password: value of `GF_ADMIN_PASSWORD` in `.env`
 3. Skip password change (for development)
 
 **Verify Dashboard:**
@@ -909,7 +909,7 @@ Since automatic provisioning can be unreliable, follow these detailed UI steps:
 1. **Open Grafana**: Navigate to http://localhost:3000
 2. **Login**:
    - Username: `admin`
-   - Password: `admin`
+   - Password: value of `GF_ADMIN_PASSWORD` in `.env`
    - Skip password change for development
 
 3. **Add Prometheus Data Source**:
@@ -1309,7 +1309,7 @@ done
 
 # 6. Verify Grafana dashboard shows data
 echo "Check Grafana at http://localhost:3000"
-echo "Username: admin, Password: admin"
+echo "Username: ${GF_ADMIN_USER}, password is supplied through .env"
 echo "Dashboard: FastAPI Pool MVP Dashboard"
 ```
 

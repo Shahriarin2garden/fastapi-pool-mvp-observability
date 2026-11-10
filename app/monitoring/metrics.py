@@ -23,3 +23,20 @@ db_connection_acquire_duration = Histogram(
 # Error Metrics
 db_connection_errors = Counter('db_connection_errors_total', 'Total database connection errors')
 db_query_errors = Counter('db_query_errors_total', 'Total database query errors')
+
+orders_total = Counter(
+    'orders_created_total', 'Orders processed by outcome', ['status']
+)
+order_requests_total = Counter(
+    'order_requests_total', 'POST /api/orders requests', ['status_class']
+)
+order_request_duration = Histogram(
+    'order_request_duration_seconds',
+    'POST /api/orders latency in seconds',
+    buckets=[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+)
+order_value_cents_total = Counter(
+    'order_value_cents_total', 'Sum of successful order value in cents'
+)
+orders_total.labels('success')
+orders_total.labels('failed')

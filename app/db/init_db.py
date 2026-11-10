@@ -9,6 +9,17 @@ CREATE TABLE IF NOT EXISTS users (
 );
 """
 
+CREATE_ORDERS_TABLE = """
+CREATE TABLE IF NOT EXISTS orders (
+    id SERIAL PRIMARY KEY,
+    customer_email TEXT NOT NULL,
+    item TEXT NOT NULL,
+    quantity INT NOT NULL CHECK (quantity > 0),
+    amount_cents INT NOT NULL CHECK (amount_cents >= 0),
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+"""
+
 
 async def ensure_tables():
     if pool_module.pool is None:
@@ -16,6 +27,7 @@ async def ensure_tables():
     try:
         async with pool_module.pool.acquire() as conn:
             await conn.execute(CREATE_USERS_TABLE)
+            await conn.execute(CREATE_ORDERS_TABLE)
             print("Tables created successfully")
     except Exception as e:
         print(f"Failed to create tables: {e}")

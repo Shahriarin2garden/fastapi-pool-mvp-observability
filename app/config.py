@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     POOL_MIN_SIZE: int = 2
     POOL_MAX_SIZE: int = 10
     COMMAND_TIMEOUT: int = 5
+    FAILURE_RATE: float = 0.0
 
     class Config:
         env_file = ".env"
