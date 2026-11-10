@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ -f .env ]]; then
+  set -a
+  . ./.env
+  set +a
+fi
+
 fail() {
   echo "FAIL: $1" >&2
   docker compose logs --tail=200
