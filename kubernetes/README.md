@@ -28,3 +28,5 @@ In Grafana Explore, use `{namespace="demo"}` and
 inspect `microk8s kubectl -n monitoring logs deploy/alloy`, Loki `/ready`, the
 rendered host address, and the firewall. `LOKI_BIND_IP=127.0.0.1` cannot be
 reached from MicroK8s; use the laptop IP and restrict port 3100 to the pod CIDR.
+The official Alloy chart creates the service account and RBAC needed to discover
+pods and read logs by default; keep the chart's default RBAC enabled.

@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ -f .env ]]; then
+  set -a
+  . ./.env
+  set +a
+fi
 host="${1:-${LOKI_BIND_IP:-}}"
 if [[ -z "$host" || "$host" == "127.0.0.1" || "$host" == "localhost" ]]; then
   echo "Provide the laptop IP reachable from MicroK8s pods; loopback is not reachable." >&2

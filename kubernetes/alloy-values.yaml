@@ -1,5 +1,6 @@
 alloy:
   configMap:
+    create: true
     content: |
       discovery.kubernetes "pods" {
         role = "pod"

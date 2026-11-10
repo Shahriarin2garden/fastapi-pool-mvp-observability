@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ -f .env ]]; then
+  set -a
+  . ./.env
+  set +a
+fi
 mkdir -p evidence
 out="evidence/$(date -u +%Y%m%dT%H%M%SZ).txt"
 {

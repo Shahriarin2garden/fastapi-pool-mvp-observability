@@ -40,3 +40,5 @@ order_value_cents_total = Counter(
 )
 orders_total.labels('success')
 orders_total.labels('failed')
+for _status_class in ("2xx", "4xx", "5xx"):
+    order_requests_total.labels(_status_class)

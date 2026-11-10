@@ -1,0 +1,50 @@
+name: Observability CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt pyyaml
+      - run: python scripts/generate_dashboards.py && git diff --exit-code grafana/dashboards
+      - run: python scripts/lint-repo.py
+      - run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - run: shellcheck scripts/*.sh
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: pytest -q tests
+
+  config-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env && docker compose config -q
+      - run: docker run --rm --entrypoint promtool -v "$PWD/prometheus:/p" prom/prometheus:v2.55.1 check config /p/prometheus.yml
+      - run: docker run --rm -v "$PWD/loki/config.yml:/c.yml:ro" grafana/loki:3.4.2 -config.file=/c.yml -verify-config
+
+  stack-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - run: docker compose up -d --build --wait
+        timeout-minutes: 10
+      - run: curl --fail http://127.0.0.1:8001/health && curl --fail http://127.0.0.1:9090/-/healthy && curl --fail http://127.0.0.1:3000/api/health && curl --fail http://127.0.0.1:3100/ready
+      - if: failure()
+        run: docker compose logs
+      - if: always()
+        run: docker compose down

@@ -12,8 +12,6 @@ from app.monitoring.metrics import (
     db_pool_size,
     db_query_duration,
     db_query_errors,
-    order_request_duration,
-    order_requests_total,
     order_value_cents_total,
     orders_total,
 )
@@ -55,7 +53,6 @@ async def create_order(
             db_query_duration.observe(time.perf_counter() - query_started)
         orders_total.labels("success").inc()
         order_value_cents_total.inc(order.amount_cents)
-        order_requests_total.labels("2xx").inc()
         result = OrderResponse(**dict(row), status="created")
         logger.info(
             "level=INFO event=order_created order_id=%s item=%s quantity=%s duration_ms=%.1f",
@@ -67,7 +64,6 @@ async def create_order(
         return result
     except HTTPException:
         orders_total.labels("failed").inc()
-        order_requests_total.labels("5xx").inc()
         logger.error(
             "level=ERROR event=order_failed reason=simulated duration_ms=%.1f",
             (time.perf_counter() - started) * 1000,
@@ -76,11 +72,8 @@ async def create_order(
     except (asyncpg.PostgresError, RuntimeError):
         db_query_errors.inc()
         orders_total.labels("failed").inc()
-        order_requests_total.labels("5xx").inc()
         logger.error(
             "level=ERROR event=order_failed reason=database duration_ms=%.1f",
             (time.perf_counter() - started) * 1000,
         )
         raise HTTPException(status_code=503, detail="order service unavailable")
-    finally:
-        order_request_duration.observe(time.perf_counter() - started)

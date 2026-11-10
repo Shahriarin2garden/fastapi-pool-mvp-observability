@@ -26,7 +26,7 @@ groups:
               refId: A
           - refId: B
             relativeTimeRange: {from: 300, to: 0}
-            datasourceUid: "-100"
+            datasourceUid: __expr__
             model:
               expression: A
               reducer: last
@@ -34,7 +34,7 @@ groups:
               refId: B
           - refId: C
             relativeTimeRange: {from: 300, to: 0}
-            datasourceUid: "-100"
+            datasourceUid: __expr__
             model:
               expression: B < 1
               type: threshold
@@ -60,7 +60,7 @@ groups:
               refId: A
           - refId: B
             relativeTimeRange: {from: 300, to: 0}
-            datasourceUid: "-100"
+            datasourceUid: __expr__
             model:
               expression: A
               reducer: last
@@ -68,7 +68,7 @@ groups:
               refId: B
           - refId: C
             relativeTimeRange: {from: 300, to: 0}
-            datasourceUid: "-100"
+            datasourceUid: __expr__
             model:
               expression: B > 0.2
               type: threshold
