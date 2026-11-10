@@ -1,4 +1,4 @@
-.PHONY: lint preflight up down ps test traffic verify k8s-up k8s-down alert-test demo evidence dashboards zip clean
+.PHONY: lint preflight up down ps test traffic verify smoke k8s-up k8s-down alert-test demo evidence dashboards zip clean
 lint:
 	python3 scripts/lint-repo.py
 preflight:
@@ -23,6 +23,8 @@ demo:
 	bash scripts/demo.sh
 verify:
 	bash scripts/verify.sh
+smoke:
+	bash scripts/ci-smoke.sh
 evidence:
 	bash scripts/collect-evidence.sh
 dashboards:
