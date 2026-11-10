@@ -5,8 +5,7 @@ if [[ -f .env ]]; then
   . ./.env
   set +a
 fi
-cleanup() { docker compose start app >/dev/null 2>&1 || true; }
-trap cleanup EXIT
+trap 'docker compose start app >/dev/null 2>&1 || true' EXIT
 trap 'exit 130' INT TERM
 if [[ "${1:-}" == "--high-failure" ]]; then
   scripts/traffic-test.sh failure
