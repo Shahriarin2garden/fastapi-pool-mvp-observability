@@ -198,6 +198,114 @@ Prometheus targets page.
 | Empty dashboards | No traffic or short time range | Run `make traffic` and widen the dashboard time range |
 | Port already in use | Another service owns a published port | Run `make preflight`, stop the conflicting service, or change local bindings |
 
+## Assessment checklist
+
+### Ubuntu 26.04 setup
+
+On Ubuntu 26.04, install Docker Engine with the Compose plugin, MicroK8s,
+`kubectl`, and Helm. The bootstrap helper installs the required host tools;
+verify them with:
+
+```bash
+docker --version
+docker compose version
+microk8s status --wait-ready
+microk8s kubectl version --client
+microk8s helm3 version
+```
+
+The reproducible path is:
+
+```bash
+make preflight
+make up
+make verify
+make k8s-up
+make traffic
+```
+
+### Verification and persistence
+
+`make verify` must report healthy Compose services, reachable Prometheus and
+Grafana endpoints, and the expected metrics. `make k8s-up` must report the
+MicroK8s workload and Alloy as ready; `make traffic` changes request, latency,
+order, and failure panels. To verify persistence, run:
+
+```bash
+docker compose down
+docker compose up -d
+make verify
+```
+
+The database rows, named-volume data, provisioned dashboards, and retained
+Prometheus/Loki data remain available after this restart. Use `make down` and
+`make k8s-down` for normal cleanup; use `make clean CONFIRM=yes` to remove
+Compose volumes, and remove MicroK8s only when it is no longer needed.
+
+### PromQL reference
+
+| Signal | Expression | Explanation |
+|---|---|---|
+| CPU | `100 - avg(rate(node_cpu_seconds_total{mode="idle"}[1m])) * 100` | Converts idle CPU time into host CPU utilisation percentage. |
+| RAM | `(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100` | Shows the percentage of host memory currently unavailable. |
+| Requests/second | `sum(rate(order_requests_total[1m]))` | Counts the API request rate over the last minute. |
+| Error/failure rate | `100 * sum(rate(order_requests_total{status_class="5xx"}[1m])) / clamp_min(sum(rate(order_requests_total[1m])), 1e-9)` | Divides failed order requests by all requests without a zero denominator. |
+| p95 latency | `histogram_quantile(0.95, sum by (le) (rate(order_request_duration_seconds_bucket[1m])))` | Estimates the 95th-percentile order request latency. |
+
+### Host cross-checks
+
+Compare dashboard values with the Ubuntu host commands `free -h`, `df -h`,
+and `uptime`. Record the same observation window in the table:
+
+| Measurement | Grafana/Prometheus | Host command | Real value |
+|---|---|---|---|
+| RAM used | RAM panel | `free -h` | __________ |
+| Root disk used | Disk panel | `df -h /` | __________ |
+| Host uptime | Uptime panel | `uptime` | __________ |
+
+### MicroK8s logs to Loki
+
+Alloy discovers MicroK8s pods through the Kubernetes API and reads their
+container log files using its Kubernetes source. It pushes to the Compose-host
+Loki HTTP endpoint:
+`http://<LAPTOP_IP>:3100/loki/api/v1/push`.
+`scripts/render-alloy-values.sh` substitutes `<LAPTOP_IP>` into
+`kubernetes/.rendered/alloy-values.yaml`; `LOKI_BIND_IP` must expose that
+address, restricted by the firewall to the MicroK8s pod CIDR. Test the route
+from inside a pod with:
+
+```bash
+microk8s kubectl run curltest --rm -it --restart=Never \
+  --image=curlimages/curl -- curl -s http://<LAPTOP_IP>:3100/ready
+```
+
+### Demonstration
+
+Run `scripts/traffic-test.sh normal` for successful requests,
+`scripts/traffic-test.sh burst` for a higher traffic rate, and
+`scripts/traffic-test.sh failure` for controlled HTTP 500 failures. Normal
+traffic increases `orders_created_total`; burst traffic increases request rate
+and p95 latency; failures increase the 5xx failure-rate panel and produce
+corresponding application logs. Run `scripts/k8s-error-burst.sh` to add
+timestamped Kubernetes errors visible through the Loki dashboard and Explore.
+
+### Security and limitations
+
+Observability ports are bound to `127.0.0.1` by default; Loki is the intentional
+exception when `LOKI_BIND_IP` is set to the laptop address for MicroK8s.
+Secrets are not stored in Git, and SMTP is configured only through `.env`.
+The single-node filesystem storage and static scrape targets are deliberate
+assessment limitations; production use should add durable storage, TLS/auth,
+and dynamic service discovery.
+
+### Candidate information
+
+```text
+Name: CANDIDATE_NAME
+ID: CANDIDATE_ID
+GitHub: https://github.com/CANDIDATE_USERNAME/CANDIDATE_REPOSITORY
+```
+
 ## License
 
 See [LICENSE](LICENSE).
