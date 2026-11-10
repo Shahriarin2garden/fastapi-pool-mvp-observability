@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+import logging
 from prometheus_fastapi_instrumentator import Instrumentator
 from app.db.pool import init_pool, close_pool
 from app.db.init_db import ensure_tables
 from app.routes.user import router as user_router
+from app.routes.orders import router as orders_router
 from app.monitoring.metrics import db_pool_max_size
 
 
@@ -40,9 +42,11 @@ app = FastAPI(
 )
 
 app.include_router(user_router)
+app.include_router(orders_router)
 
 # Initialize Prometheus instrumentation
-Instrumentator().instrument(app).expose(app)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+Instrumentator().instrument(app, excluded_handlers=["/metrics"]).expose(app)
 
 @app.get("/health")
 async def health_check():

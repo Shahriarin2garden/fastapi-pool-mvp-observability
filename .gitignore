@@ -20,6 +20,9 @@ wheels/
 *.egg
 
 .env
+*.zip
+evidence/*.local*
+kubernetes/.rendered/
 .venv
 env/
 venv/
@@ -34,3 +37,5 @@ htmlcov/
 .DS_Store
 .vscode/
 .idea/
+__pycache__/
+*.pyc
