@@ -36,7 +36,19 @@ groups:
             relativeTimeRange: {from: 300, to: 0}
             datasourceUid: __expr__
             model:
-              expression: B < 1
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: B
               type: threshold
               refId: C
       - uid: high-order-failure-rate
@@ -70,6 +82,18 @@ groups:
             relativeTimeRange: {from: 300, to: 0}
             datasourceUid: __expr__
             model:
-              expression: B > 0.2
+              conditions:
+                - evaluator:
+                    params: [0.2]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: B
               type: threshold
               refId: C
