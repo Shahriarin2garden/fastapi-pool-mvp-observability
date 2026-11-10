@@ -15,3 +15,9 @@ For a safe test, run `docker compose stop app`, wait about two minutes, verify
 the alert is Firing and the email arrives, then run `docker compose start app`.
 Operators should check `docker compose ps`, `docker compose logs app`, database
 health, the metrics dashboard, and Loki logs before restarting or rolling back.
+
+If Grafana rejects a provisioning field, create each alert in the Grafana UI,
+choose Prometheus, configure the same query/reduce/threshold expressions and
+pending periods, then use **Export** to save the generated provisioning YAML
+back into this directory. This is the documented fallback for version-specific
+alerting schema changes.

@@ -7,6 +7,29 @@ This repository demonstrates real host and application metrics, Kubernetes pod
 logs, and controlled Grafana email alerting. It retains the original FastAPI
 `/users` API and database-pool instrumentation.
 
+## Ubuntu quick path
+
+```bash
+git clone <NEW_REPOSITORY_URL>
+cd fastapi-pool-mvp-observability
+scripts/bootstrap-ubuntu.sh
+scripts/bootstrap-ubuntu.sh --yes
+cp .env.example .env
+# edit .env, including NODE_EXPORTER_BIND, LOKI_BIND_IP, SMTP_* and ALERT_RECIPIENT
+make preflight
+make up
+make verify
+make k8s-up
+make traffic
+make alert-test
+make evidence
+make zip
+```
+
+The first bootstrap command is a dry run. The `--yes` form performs installation
+and may require a new login for group membership. Use a Gmail App Password, not
+your normal account password.
+
 ## Architecture
 
 ```mermaid
@@ -118,6 +141,21 @@ The original live tests expect the Compose network (`http://app:8000`). Run
 them after the stack is healthy. `scripts/verify.sh` reports WARN rather than
 FAIL when the optional Kubernetes log stream is not installed.
 
+## CI
+
+GitHub Actions runs repository linting, shellcheck, isolated tests, Compose and
+Prometheus/Loki configuration validation, and a Docker stack smoke test. CI
+cannot validate MicroK8s networking, firewall rules, or real SMTP delivery.
+
+## What was verified vs. the Ubuntu laptop
+
+| Check | Local Windows | Ubuntu/CI |
+|---|---|---|
+| Python compilation and dashboard generation | Verified | Repeated in CI |
+| Compose interpolation and repository lint | Verified where Docker-independent | Docker-backed checks in CI |
+| API tests | Requires installed dependencies | Isolated tests in CI |
+| MicroK8s, firewall, SMTP, email | Not run | Requires the human Ubuntu setup |
+
 ## Live demo and persistence
 
 Run normal traffic, a burst, and failures; observe request rate, p95, failure
@@ -146,6 +184,19 @@ MicroK8s/Alloy, SMTP verification, and screenshots. If Alloy cannot push logs,
 check the rendered host IP, firewall, Loki `/ready`, and Alloy logs. If a
 target is down, inspect `docker compose ps`, app logs, database health, and the
 Prometheus targets page.
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Node Exporter DOWN | Host bind address is wrong | Set `NODE_EXPORTER_BIND` to the Docker bridge address and inspect `ss -tlnp` |
+| Prometheus cannot resolve `host.docker.internal` | Missing host gateway mapping | Keep `extra_hosts` and restart Compose |
+| Alloy cannot reach Loki | Loopback or firewall | Set `LOKI_BIND_IP` to the laptop IP and allow only the pod CIDR |
+| No Loki logs | Alloy RBAC, labels, or workload | Inspect Alloy logs and `kubectl logs`; confirm `{namespace="demo"}` |
+| Grafana provisioning error | Alert YAML schema or environment | Inspect Grafana logs; use the documented UI export fallback |
+| No email | SMTP auth/App Password, port 587, or spam | Check SMTP settings, credentials, firewall, and spam folder |
+| Docker socket permission denied | User lacks docker group | Log in again after bootstrap, then run `id -nG` |
+| MicroK8s group error | Session has stale groups | Run `newgrp microk8s` or log in again |
+| Empty dashboards | No traffic or short time range | Run `make traffic` and widen the dashboard time range |
+| Port already in use | Another service owns a published port | Run `make preflight`, stop the conflicting service, or change local bindings |
 
 ## License
 

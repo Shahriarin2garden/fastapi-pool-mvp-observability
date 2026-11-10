@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+set -euo pipefail
 fail=0
 check() { if "$@"; then echo "PASS: $1"; else echo "FAIL: $1"; fail=1; fi; }
 check docker compose ps

@@ -12,7 +12,8 @@ def panel(panel_id, title, expression, panel_type="timeseries", unit="none", dat
         "datasource": {"type": "prometheus" if datasource == "prometheus" else "loki", "uid": datasource},
         "targets": [{"refId": "A", "expr": expression}],
         "fieldConfig": {"defaults": {"unit": unit}, "overrides": []},
-        "gridPos": {"h": 8, "w": 12, "x": (panel_id - 1) % 2 * 12, "y": (panel_id - 1) // 2 * 8},
+        "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+        "gridPos": {"h": 8, "w": 12, "x": (panel_id - 2) % 2 * 12, "y": 5 + (panel_id - 2) // 2 * 8},
     }
 
 

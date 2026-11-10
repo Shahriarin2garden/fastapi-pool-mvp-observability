@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ -f .env ]]; then
+  set -a
+  . ./.env
+  set +a
+fi
 BASE_URL="${BASE_URL:-http://127.0.0.1:8001}"
 phase="${1:-all}"
 payload='{"customer_email":"demo@example.com","item":"widget","quantity":1,"amount_cents":199}'
