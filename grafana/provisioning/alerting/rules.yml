@@ -1,0 +1,75 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: order-api
+    folder: Observability
+    interval: 30s
+    rules:
+      - uid: order-api-down
+        title: OrderAPIDown
+        condition: C
+        for: 1m
+        noDataState: Alerting
+        execErrState: Alerting
+        labels:
+          severity: critical
+        annotations:
+          summary: Order API target is down
+          description: The order-api Prometheus target is not up.
+          runbook: Check docker compose ps/logs app and database health, then restart the app if needed.
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus
+            model:
+              expr: up{job="order-api"}
+              refId: A
+          - refId: B
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: "-100"
+            model:
+              expression: A
+              reducer: last
+              type: reduce
+              refId: B
+          - refId: C
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: "-100"
+            model:
+              expression: B < 1
+              type: threshold
+              refId: C
+      - uid: high-order-failure-rate
+        title: HighOrderFailureRate
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Alerting
+        labels:
+          severity: warning
+        annotations:
+          summary: Order failure rate is high
+          description: More than 20 percent of order requests failed over the last minute.
+          runbook: Inspect the app dashboard and Loki logs, then check database health and recent deployments.
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus
+            model:
+              expr: sum(rate(order_requests_total{status_class="5xx"}[1m])) / clamp_min(sum(rate(order_requests_total[1m])), 1e-9)
+              refId: A
+          - refId: B
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: "-100"
+            model:
+              expression: A
+              reducer: last
+              type: reduce
+              refId: B
+          - refId: C
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: "-100"
+            model:
+              expression: B > 0.2
+              type: threshold
+              refId: C
