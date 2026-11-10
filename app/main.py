@@ -60,7 +60,7 @@ async def order_metrics_middleware(request, call_next):
 
 # Initialize Prometheus instrumentation
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
-Instrumentator().instrument(app, excluded_handlers=["/metrics"]).expose(app)
+Instrumentator(excluded_handlers=["/metrics"]).instrument(app).expose(app)
 
 @app.get("/health")
 async def health_check():
