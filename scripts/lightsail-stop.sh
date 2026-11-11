@@ -3,7 +3,7 @@
 set -euo pipefail
 
 NAME="${LIGHTSAIL_NAME:-fastapi-pool-mvp-demo}"
-REGION="${LIGHTSAIL_REGION:-us-east-1}"
+REGION="${LIGHTSAIL_REGION:-ap-southeast-2}"
 
 echo "Stopping $NAME ..."
 aws lightsail stop-instance --instance-name "$NAME" --region "$REGION" >/dev/null
