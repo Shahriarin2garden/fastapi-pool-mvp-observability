@@ -49,6 +49,42 @@ Grafana. MicroK8s is a separate local cluster: Alloy reads pod logs and pushes
 them to Loki on the Ubuntu host. Prometheus evaluates real changing metrics;
 Grafana sends alert email through the configured SMTP server.
 
+## AWS deployments
+
+The repository ships two AWS targets, both Terraform-managed and sharing the
+same Compose stack and observability concepts as the local setup:
+
+**EC2 demo (works in the restricted sandbox account).** The sandbox org SCP
+denies EKS/ECS/IAM/ECR mutations for IAM users but allows EC2 for the
+`AccountFullAccessRole` that AWS CloudShell uses, so this path runs from
+CloudShell: a `t3.small` Ubuntu 24.04 instance is launched by Terraform
+(`infra/ec2/`, local state), cloud-init installs Docker, clones the repo and
+brings up the full Compose stack with public bindings for the API (`:8001`)
+and Grafana (`:3000`). The instance is stopped between demos to keep the
+builder-account credits intact. See [AWS_EC2.md](AWS_EC2.md) for the
+architecture, cost model and runbook:
+
+```bash
+make ec2-up      # launch + bootstrap + wait for /health
+make ec2-stop    # stop between demos (billing pauses, disk persists)
+make ec2-resume  # bring it back (new public IP is printed)
+make ec2-destroy # full teardown
+```
+
+**EKS reference architecture (for an unrestricted account).** A full
+production-shaped design is included and kept ready: Terraform layers in
+`infra/bootstrap/` (S3 state, ECR, budget + billing alarm, GitHub OIDC deploy
+role) and `infra/cluster/` (2-AZ VPC with NAT and ECR VPC endpoints, EKS with
+spot managed nodes, IRSA for EBS CSI and the ALB controller, Helm-managed
+kube-prometheus-stack, Loki, Alloy, metrics-server), plus ALB ingresses, HPA
+and ServiceMonitor manifests in `kubernetes/aws/`. The cluster is ephemeral by
+design (~$9/month at 1-2 demo hours per day). See [AWS_DEPLOY.md](AWS_DEPLOY.md).
+
+```bash
+make aws-bootstrap EMAIL=you@example.com   # once: state bucket, ECR, budget
+make aws-up && make aws-deploy && make aws-down
+```
+
 ## Repository structure
 
 `app/` contains the API and existing user feature; `migrations/` contains the

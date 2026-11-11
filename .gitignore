@@ -20,9 +20,21 @@ wheels/
 *.egg
 
 .env
+.env.aws
 *.zip
+fastapi-pool-mvp-demo-key.pem
+.ec2-grafana-password
 evidence/*.local*
 kubernetes/.rendered/
+kubernetes/.rendered-aws/
+infra/.terraform/
+infra/*/.terraform/
+infra/*.tfstate
+infra/*/*.tfstate
+infra/*.tfstate.backup
+infra/*/*.tfstate.backup
+infra/*.tfplan
+infra/*/*.tfplan
 .venv
 env/
 venv/

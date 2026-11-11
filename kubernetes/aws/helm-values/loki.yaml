@@ -1,0 +1,40 @@
+# Loki single-binary (filesystem storage) for the ephemeral demo cluster.
+# tsdb + v13 schema matches Loki 3.x recommendations.
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+
+deploymentMode: SingleBinary
+singleBinary:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# Disable canaries, self-monitoring and extras not needed for the demo.
+test:
+  enabled: false
+lokiCanary:
+  enabled: false
+monitoring:
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+dashboards:
+  enabled: false
+rules:
+  enabled: false
