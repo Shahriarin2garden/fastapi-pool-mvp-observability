@@ -32,6 +32,21 @@ def metrics_dashboard():
         panel(11, "Targets up", "up", "table"),
         panel(12, "DB pool size vs max", "db_pool_size", unit="none"),
         panel(13, "DB query p95", "histogram_quantile(0.95, sum by (le) (rate(db_query_duration_seconds_bucket[1m])))", unit="s"),
+        panel(14, "Frontend LCP p75", 'histogram_quantile(0.75, rate(frontend_web_vital_seconds_bucket{name="LCP"}[5m]))', "stat", "s"),
+        panel(15, "Frontend INP p75", 'histogram_quantile(0.75, rate(frontend_web_vital_seconds_bucket{name="INP"}[5m]))', "stat", "s"),
+        panel(16, "UI orders per minute", 'sum by (event) (increase(frontend_events_total{event=~"order_success|order_failure"}[1m]))', unit="none"),
+        {
+            "id": 17, "title": "Client p95 vs server p95", "type": "timeseries",
+            "datasource": {"type": "prometheus", "uid": "prometheus"},
+            "targets": [
+                {"refId": "A", "legendFormat": "client", "expr": 'histogram_quantile(0.95, sum by (le) (rate(frontend_api_latency_seconds_bucket{endpoint="orders"}[5m])))'},
+                {"refId": "B", "legendFormat": "server", "expr": 'histogram_quantile(0.95, sum by (le) (rate(order_request_duration_seconds_bucket[5m])))'},
+            ],
+            "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+            "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5 + (17 - 2) // 2 * 8},
+        },
+        panel(18, "Frontend JS errors per minute", 'sum(rate(frontend_js_errors_total[1m])) * 60', unit="reqps"),
     ]
     return {"uid": "obs-metrics", "title": "Observability Metrics", "refresh": "10s", "time": {"from": "now-30m", "to": "now"}, "panels": panels, "schemaVersion": 39, "version": 1}
 
