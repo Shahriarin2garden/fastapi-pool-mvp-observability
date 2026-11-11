@@ -42,3 +42,29 @@ orders_total.labels('success')
 orders_total.labels('failed')
 for _status_class in ("2xx", "4xx", "5xx"):
     order_requests_total.labels(_status_class)
+
+
+def _get_pool():
+    # imported lazily to avoid a circular import with app.db
+    from app.db import pool as pool_module
+    return pool_module.pool
+
+
+def _pool_size():
+    p = _get_pool()
+    return p.get_size() if p else 0
+
+
+def _pool_idle():
+    p = _get_pool()
+    return p.get_idle_size() if p else 0
+
+
+def _pool_active():
+    p = _get_pool()
+    return (p.get_size() - p.get_idle_size()) if p else 0
+
+
+db_pool_size.set_function(_pool_size)
+db_idle_connections.set_function(_pool_idle)
+db_active_connections.set_function(_pool_active)

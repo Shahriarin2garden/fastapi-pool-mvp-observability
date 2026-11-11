@@ -6,7 +6,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NAME="${LIGHTSAIL_NAME:-fastapi-pool-mvp-demo}"
-# Pinned to us-east-1 (probed as SCP-allowed for Lightsail); override with
+# Defaults to ap-southeast-2 (the SCP-allowed region for Lightsail); override with
 # LIGHTSAIL_REGION. AWS_REGION is ignored on purpose: CloudShell sessions
 # default to the console region (e.g. ap-southeast-2) which is SCP-locked.
 REGION="${LIGHTSAIL_REGION:-ap-southeast-2}"
@@ -23,6 +23,7 @@ EXISTING="$(aws lightsail get-instance --instance-name "$NAME" --region "$REGION
 
 if [[ "$EXISTING" != "not-found" ]]; then
   echo "Instance '$NAME' already exists (state: $EXISTING)."
+  echo "NOTE: user data only applies when an instance is created; run make lightsail-destroy first to pick up template changes."
   if [[ "$EXISTING" == "stopped" ]]; then
     bash "$ROOT/scripts/lightsail-resume.sh"
     exit 0

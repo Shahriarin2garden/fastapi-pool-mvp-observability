@@ -4,7 +4,7 @@ from app.db import pool as pool_module
 from app.schemas.user_schema import UserCreate, UserResponse
 from app.monitoring.metrics import (
     db_query_duration, db_connection_acquire_duration,
-    db_pool_size, db_query_errors, db_connection_errors
+    db_query_errors, db_connection_errors
 )
 
 
@@ -13,7 +13,6 @@ async def fetch_users() -> List[UserResponse]:
     try:
         async with pool_module.pool.acquire() as conn:
             db_connection_acquire_duration.observe(time.time() - acquire_start)
-            db_pool_size.set(pool_module.pool.get_size())
             
             query_start = time.time()
             rows = await conn.fetch("SELECT id, name, email FROM users ORDER BY id")
@@ -29,7 +28,6 @@ async def create_user(user: UserCreate) -> UserResponse:
     try:
         async with pool_module.pool.acquire() as conn:
             db_connection_acquire_duration.observe(time.time() - acquire_start)
-            db_pool_size.set(pool_module.pool.get_size())
             
             query_start = time.time()
             row = await conn.fetchrow(
@@ -48,7 +46,6 @@ async def get_user_by_id(user_id: int) -> Optional[UserResponse]:
     try:
         async with pool_module.pool.acquire() as conn:
             db_connection_acquire_duration.observe(time.time() - acquire_start)
-            db_pool_size.set(pool_module.pool.get_size())
             
             query_start = time.time()
             row = await conn.fetchrow(
