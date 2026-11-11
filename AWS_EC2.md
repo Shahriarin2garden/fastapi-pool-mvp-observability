@@ -12,7 +12,7 @@ session). Everything is Terraform-managed with local state.
 flowchart LR
   User[Browser / curl] --> IP[Public IP]
   IP --> SG[Security group 22 8001 3000]
-  SG --> EC2[EC2 t3.small Ubuntu 24.04]
+  SG --> EC2[EC2 t3.small Amazon Linux 2023]
   subgraph EC2
     USER[user_data: Docker install + git clone] --> C[docker compose]
     C --> DB[Postgres]
@@ -78,6 +78,11 @@ make ec2-destroy # full teardown
 - Public IP **changes** after every stop/resume — the scripts print the new one.
 - SSH is open to `0.0.0.0/0` by default (`infra/ec2/variables.tf`); restrict
   `ssh_cidr`/`web_cidr` to your IP for tighter demos.
+- The AMI is pinned to Amazon Linux 2023 (`ami-0e182bd8728384e40`) because
+  `ec2:DescribeImages` is SCP-denied — the id came from the console. To use
+  Ubuntu instead: grab an Ubuntu AMI id from the console and set
+  `-var="ami_id=<id>" -var="ssh_user=ubuntu"`; the bootstrap supports both
+  distros automatically.
 - `t3.micro` would be free-tier eligible but 1 GiB is too tight for six
   containers; `t3.small` is the deliberate choice.
 - The EC2 layer lives in `infra/ec2/` with **local state** in CloudShell's

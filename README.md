@@ -57,7 +57,7 @@ same Compose stack and observability concepts as the local setup:
 **EC2 demo (works in the restricted sandbox account).** The sandbox org SCP
 denies EKS/ECS/IAM/ECR mutations for IAM users but allows EC2 for the
 `AccountFullAccessRole` that AWS CloudShell uses, so this path runs from
-CloudShell: a `t3.small` Ubuntu 24.04 instance is launched by Terraform
+CloudShell: a `t3.small` Amazon Linux 2023 instance is launched by Terraform
 (`infra/ec2/`, local state), cloud-init installs Docker, clones the repo and
 brings up the full Compose stack with public bindings for the API (`:8001`)
 and Grafana (`:3000`). The instance is stopped between demos to keep the

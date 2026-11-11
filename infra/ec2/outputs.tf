@@ -19,7 +19,7 @@ output "grafana_url" {
 }
 
 output "ssh_command" {
-  value       = "ssh -i fastapi-pool-mvp-demo-key.pem ubuntu@${aws_instance.demo.public_ip}"
+  value       = "ssh -i fastapi-pool-mvp-demo-key.pem ${var.ssh_user}@${aws_instance.demo.public_ip}"
   description = "SSH command (save the private key from the sensitive output first)."
 }
 

@@ -34,6 +34,18 @@ variable "internet_gateway_id" {
   default     = ""
 }
 
+variable "ami_id" {
+  description = "AMI for the demo instance. DescribeImages is SCP-denied, so it is pinned: Amazon Linux 2023 x86_64 (from the console). Swap for an Ubuntu AMI id and set ssh_user=ubuntu if preferred."
+  type        = string
+  default     = "ami-0e182bd8728384e40"
+}
+
+variable "ssh_user" {
+  description = "Default login user for the chosen AMI (ec2-user for Amazon Linux, ubuntu for Ubuntu)."
+  type        = string
+  default     = "ec2-user"
+}
+
 variable "instance_type" {
   description = "t3.small (2 GiB) fits the full 6-container stack; t3.micro (1 GiB) is too tight."
   type        = string

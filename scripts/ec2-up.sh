@@ -69,6 +69,6 @@ echo
 echo "== Demo URLs =="
 echo "  API:     http://$PUBLIC_IP:8001/health"
 echo "  Grafana: http://$PUBLIC_IP:3000"
-echo "  SSH:     ssh -i $ROOT/fastapi-pool-mvp-demo-key.pem ubuntu@$PUBLIC_IP"
+echo "  SSH:     ssh -i $ROOT/fastapi-pool-mvp-demo-key.pem ec2-user@$PUBLIC_IP"
 echo
 echo "To save money between demos:  make ec2-stop"

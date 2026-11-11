@@ -16,22 +16,8 @@ locals {
   igw_id = var.internet_gateway_id != "" ? var.internet_gateway_id : aws_internet_gateway.this[0].id
 }
 
-data "aws_ami" "ubuntu" {
-  most_recent = true
-  owners      = ["099720109477"]
-
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
-# The sandbox default VPC ships without subnets.
+# DescribeImages is denied by the sandbox SCP, so the AMI id is supplied
+# explicitly (default: Amazon Linux 2023 x86_64, taken from the console).
 resource "aws_subnet" "demo" {
   vpc_id                  = var.vpc_id
   cidr_block              = var.subnet_cidr
@@ -125,7 +111,7 @@ resource "random_password" "grafana_pass" {
 }
 
 resource "aws_instance" "demo" {
-  ami                         = data.aws_ami.ubuntu.id
+  ami                         = var.ami_id
   instance_type               = var.instance_type
   subnet_id                   = aws_subnet.demo.id
   associate_public_ip_address = true
