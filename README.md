@@ -20,6 +20,7 @@ alert email were demonstrated on 11 Nov 2026 on the Lightsail deployment.
 - [Configuration](#configuration)
 - [Verify metrics](#verify-metrics)
 - [Order API and metrics](#order-api-and-metrics)
+- [Order Console](#order-console)
 - [Kubernetes logs](#kubernetes-logs)
 - [Grafana dashboards](#grafana-dashboards)
 - [Email alerting](#email-alerting)
@@ -67,6 +68,7 @@ PostgreSQL is never published.
 - `app/`: FastAPI application, order routes, database access, and metrics.
 - `prometheus/`, `loki/`, `grafana/`: monitoring configuration and dashboards.
 - `kubernetes/`: MicroK8s namespace, workload, and Alloy values.
+- `frontend/`: Vite, React, TypeScript Order Console.
 - `scripts/`: bootstrap, verification, traffic, evidence, and deployment tools.
 - `evidence/`: evidence naming guide and collected text output.
 - `infra/`: EC2 and EKS Terraform configuration.
@@ -118,6 +120,19 @@ make verify
 If `.env` is root-owned, prefix Compose commands with `sudo`, for example
 `sudo docker compose ps`. Open the locally bound services through an SSH
 tunnel or use the public bindings described in [AWS deployment targets](#aws-deployment-targets).
+
+The Docker image builds the frontend in a Node 20 stage and serves its output
+from the FastAPI image. For local frontend work, use:
+
+```bash
+cd frontend
+npm ci
+npm run build
+```
+
+The build was validated locally before the image change. The 2 GiB Lightsail
+host should build the image only with sufficient swap, or receive an image
+built in CI or on a workstation.
 
 Deploy the Kubernetes log flow:
 
@@ -231,6 +246,39 @@ HTTP 500 requests and one invalid order. `all` runs all three modes:
 ```bash
 scripts/traffic-test.sh all
 ```
+
+## Order Console
+
+Open the FastAPI root URL to use the Order Console. It places real orders,
+shows session orders and client latency, and emits telemetry to
+`POST /api/telemetry`. The form mirrors the API constraints exactly. The load
+drills use the same `simulate_failure=true` mechanism as
+`scripts/traffic-test.sh`, so failed requests appear in the API metrics.
+
+The console sends allowlisted events, web vitals, client API latency, and
+JavaScript errors. The backend validates event names and labels, limits batches
+to 50 events and 8 KB, applies a per-IP in-memory rate limit, and never stores
+request bodies. Events are pushed asynchronously to Loki with labels
+`app="order-ui"`, `job="frontend"`, and `level`; a Loki outage does not block
+orders and increments `frontend_log_push_failures_total`.
+
+Each API request includes a W3C `traceparent` header. The API reads the trace
+ID and returns it in `X-Trace-Id`; the console displays that ID and can link it
+to a configured `VITE_TEMPO_BASE`. Real Tempo spans are phase 2 and are not
+part of this implementation.
+
+Optional frontend build variables are documented in
+[frontend/.env.example](frontend/.env.example):
+
+```bash
+VITE_GRAFANA_URL=<GRAFANA_URL>
+VITE_TEMPO_BASE=<TEMPO_TRACE_URL>
+```
+
+The generated metrics dashboard includes frontend LCP and INP p75, UI order
+outcomes, frontend JavaScript errors, and client/server latency panels. Run
+`make dashboards` after changing
+[scripts/generate_dashboards.py](scripts/generate_dashboards.py).
 
 ## Kubernetes logs
 
