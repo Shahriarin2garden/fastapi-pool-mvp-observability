@@ -9,7 +9,6 @@ from app.config import settings
 from app.db import pool as pool_module
 from app.monitoring.metrics import (
     db_connection_acquire_duration,
-    db_pool_size,
     db_query_duration,
     db_query_errors,
     order_value_cents_total,
@@ -37,7 +36,6 @@ async def create_order(
         acquire_started = time.perf_counter()
         async with pool_module.pool.acquire() as conn:
             db_connection_acquire_duration.observe(time.perf_counter() - acquire_started)
-            db_pool_size.set(pool_module.pool.get_size())
             query_started = time.perf_counter()
             row = await conn.fetchrow(
                 """

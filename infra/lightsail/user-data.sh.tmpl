@@ -1,4 +1,9 @@
 #!/bin/bash
+# Lightsail prepends a /bin/sh stub, so this file starts out under dash. Re-run only our part under bash.
+if [ -z "${BASH_VERSION:-}" ]; then
+  sed -n '/^#!\/bin\/bash$/,$p' "$0" > /tmp/lightsail-bootstrap.sh
+  exec /bin/bash /tmp/lightsail-bootstrap.sh "$@"
+fi
 # Lightsail user-data: Docker install + repo clone + compose stack (Ubuntu 24.04).
 # Placeholders are filled in by scripts/lightsail-up.sh via sed.
 # Logs: /var/log/user-data.log
@@ -13,16 +18,17 @@ APP_DIR="/opt/app"
 
 exec > >(tee -a /var/log/user-data.log) 2>&1
 export DEBIAN_FRONTEND=noninteractive
+export HOME="${HOME:-/root}"
 
-apt-get update -y
-apt-get install -y ca-certificates curl git openssl
+apt-get -o DPkg::Lock::Timeout=300 update -y
+apt-get -o DPkg::Lock::Timeout=300 install -y ca-certificates curl git openssl
 
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
 echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable" \
   > /etc/apt/sources.list.d/docker.list
-apt-get update -y
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+apt-get -o DPkg::Lock::Timeout=300 update -y
+apt-get -o DPkg::Lock::Timeout=300 install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 systemctl enable --now docker
 
 git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" "$APP_DIR"
