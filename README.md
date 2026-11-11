@@ -14,6 +14,7 @@ alert email were demonstrated on 11 Nov 2026 on the Lightsail deployment.
 ## Table of contents
 
 - [Architecture](#architecture)
+- [Assessment requirements](#assessment-requirements)
 - [Repository structure](#repository-structure)
 - [Prerequisites](#prerequisites)
 - [Quick start](#quick-start)
@@ -28,6 +29,9 @@ alert email were demonstrated on 11 Nov 2026 on the Lightsail deployment.
 - [Deviations from the reference brief](#deviations-from-the-reference-brief)
 - [Security notes](#security-notes)
 - [Evidence checklist](#evidence-checklist)
+- [Submission](#submission)
+- [Final review](#final-review)
+- [References](#references)
 - [Troubleshooting](#troubleshooting)
 - [Known limitations](#known-limitations)
 - [AWS deployment targets](#aws-deployment-targets)
@@ -62,6 +66,22 @@ The base Compose file publishes the API, Prometheus, and Grafana on loopback.
 The EC2 override publishes the API and Grafana on all interfaces. The observed
 Lightsail deployment uses that override. Loki binds to `LOKI_BIND_IP`, and
 PostgreSQL is never published.
+
+## Assessment requirements
+
+The practical assessment has three required end-to-end outcomes. Screenshots
+support the demonstration but do not replace a reproducible implementation.
+
+| Outcome | Required working result | Proof |
+|---|---|---|
+| Live metrics | Prometheus scrapes real Ubuntu host and Order API metrics; Grafana shows CPU, RAM, filesystem, network, traffic, errors, and latency. | Prometheus Targets, PromQL results, Grafana dashboard, host cross-check |
+| Kubernetes logs | A running MicroK8s workload writes real pod logs; Alloy sends them to Loki; Grafana Explore searches them with Kubernetes labels. | `microk8s kubectl logs`, Loki readiness, Explore LogQL |
+| Email alerting | A meaningful Grafana alert fires during a controlled test and delivers an SMTP email. | Alert state/history and received email with secrets hidden |
+
+Use real changing data. Do not replace metrics, logs, or notifications with
+static screenshots or mocked output. The reference brief describes an Ubuntu
+laptop and Ubuntu 26.04; this repository's demonstrated deployment is the
+documented AWS Lightsail deviation below.
 
 ## Repository structure
 
@@ -460,6 +480,8 @@ or screenshots containing secrets. Use placeholders such as
 | Kubernetes and Loki | `make k8s-up`, Explore queries | `evidence/kubernetes-logs.png` TODO |
 | Dashboard | Grafana dashboard export | `evidence/<dashboard>.json` TODO |
 | Email alert | `make alert-test`, received email | `evidence/email-alert.png` TODO |
+| Order Console | Place order, send burst, run failure drill | `evidence/order-console.png` TODO |
+| Frontend telemetry | `/api/telemetry`, Prometheus frontend metrics, Loki `{app="order-ui"}` | `evidence/frontend-telemetry.png` TODO |
 | Demo and handover | `make evidence`, `MANUAL_STEPS.md` | `evidence/<timestamp>.txt` |
 
 The repository currently contains the evidence guide and collected text-output
@@ -467,6 +489,64 @@ mechanism, but the screenshot and dashboard-export rows marked TODO still need
 to be supplied.
 Use [evidence/README.md](evidence/README.md) for the required screenshot names
 and views. Human-only actions are listed in [MANUAL_STEPS.md](MANUAL_STEPS.md).
+At the time of this documentation update, `evidence/` contains only
+`.gitkeep` and the guide, so every screenshot and export row above remains
+TODO until captured from the live deployment.
+
+## Submission
+
+Submit one complete reproducible project, either as a GitHub repository or an
+archive named `<CANDIDATE_ID>_observability.zip`. Include source code,
+Compose and Kubernetes configuration, provisioning, exported dashboards,
+tests, this README, and evidence. Do not submit only screenshots or a PDF.
+
+Before delivery:
+
+```bash
+scripts/set-candidate.sh "CANDIDATE_NAME" "CANDIDATE_ID"
+git status --short
+git add .
+git commit -m "docs: prepare observability submission"
+scripts/make-zip.sh CANDIDATE_ID
+```
+
+The archive must not contain `.env`, passwords, SMTP credentials, API tokens,
+private keys, personal information, or screenshots with sensitive details.
+Keep candidate details, repository URL, and any real recipient address out of
+the repository until they are intentionally supplied for submission.
+
+## Final review
+
+An evaluator should verify these live results:
+
+| Area | Expected result | Proof |
+|---|---|---|
+| Environment | Tool versions, Compose services, MicroK8s status, nodes, and pods are visible. | `evidence/compose-and-cluster.png` |
+| Host and app metrics | `node-exporter` and `order-api` are UP; metrics change with traffic and host activity. | Prometheus Targets and terminal cross-check |
+| Kubernetes logging | Workload logs appear both in Kubernetes and Loki with searchable labels. | `microk8s kubectl logs` and Grafana Explore |
+| Grafana visualizations | At least eight accurate live metric panels and a logs view are available. | Grafana dashboard and LogQL |
+| Email alert | The configured rule fires under test and the recipient receives the message. | Alert history and `email-alert.png` |
+| Reproducibility | A stranger can configure, run, verify, and clean the project. | Repository or archive and this README |
+
+For the optional Order Console, also verify one order, a burst, the failure
+drill, telemetry metrics, frontend Loki logs, a malformed telemetry payload,
+keyboard-only operation, responsive layouts at 1440, 1024, 768, 390, and 320
+pixels, and reduced-motion behavior. These live acceptance artifacts are
+TODO until captured on the deployed host.
+
+## References
+
+Official references used by the assessment:
+
+- [Docker Compose documentation](https://docs.docker.com/compose/)
+- [MicroK8s documentation](https://microk8s.io/docs)
+- [Kubernetes documentation](https://kubernetes.io/docs/home/)
+- [Prometheus configuration](https://prometheus.io/docs/prometheus/latest/configuration/configuration/)
+- [Node Exporter](https://github.com/prometheus/node_exporter)
+- [Grafana Alloy Kubernetes logs](https://grafana.com/docs/alloy/latest/monitor/monitor-kubernetes-logs/)
+- [Grafana Loki](https://grafana.com/docs/loki/latest/get-started/)
+- [Grafana contact points](https://grafana.com/docs/grafana/latest/alerting/configure-notifications/manage-contact-points/)
+- [Grafana SMTP](https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#smtp)
 
 ## Troubleshooting
 
@@ -538,6 +618,8 @@ inputs. See [AWS_DEPLOY.md](AWS_DEPLOY.md).
 
 - Replace `CANDIDATE_NAME`, `CANDIDATE_ID`, `<NEW_REPOSITORY_URL>`, and
   `<REPOSITORY_DIRECTORY>` with submission details.
+- Set the assessment date to `12 Nov 2026` and add the final GitHub repository
+  URL only when the submission repository is ready.
 - Add the screenshots, exported dashboard JSON, and any live measurements
   listed as TODO in the evidence checklist.
 
