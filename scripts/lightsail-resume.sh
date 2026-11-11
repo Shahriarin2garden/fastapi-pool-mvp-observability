@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NAME="${LIGHTSAIL_NAME:-fastapi-pool-mvp-demo}"
-REGION="${AWS_REGION:-us-east-1}"
+REGION="${LIGHTSAIL_REGION:-us-east-1}"
 
 echo "Starting $NAME ..."
 aws lightsail start-instance --instance-name "$NAME" --region "$REGION" >/dev/null

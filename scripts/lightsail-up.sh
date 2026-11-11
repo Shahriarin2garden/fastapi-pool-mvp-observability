@@ -6,12 +6,16 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NAME="${LIGHTSAIL_NAME:-fastapi-pool-mvp-demo}"
-REGION="${AWS_REGION:-us-east-1}"
+# Pinned to us-east-1 (probed as SCP-allowed for Lightsail); override with
+# LIGHTSAIL_REGION. AWS_REGION is ignored on purpose: CloudShell sessions
+# default to the console region (e.g. ap-southeast-2) which is SCP-locked.
+REGION="${LIGHTSAIL_REGION:-us-east-1}"
 AZ="${AZ:-us-east-1a}"
 BUNDLE="${BUNDLE:-small_3_0}"        # 2 vCPU / 2 GiB / 60 GB SSD (~$10/mo)
 BLUEPRINT="${BLUEPRINT:-ubuntu_24_04}"
 REPO_URL="${REPO_URL:-https://github.com/Shahriarin2garden/fastapi-pool-mvp-observability.git}"
 REPO_BRANCH="${REPO_BRANCH:-main}"
+ALERT_RECIPIENT="${ALERT_RECIPIENT:-you@example.com}"
 
 command -v aws >/dev/null 2>&1 || { echo "ERROR: aws CLI not found." >&2; exit 1; }
 
