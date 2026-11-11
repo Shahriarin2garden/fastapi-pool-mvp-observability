@@ -12,7 +12,10 @@ CloudShell via plain `aws lightsail` commands (no Terraform state to lose).
 Same Compose stack as the EC2/local target, on one Lightsail VM:
 
 - **Blueprint**: Ubuntu 24.04
-- **Bundle**: `small_3_0` (2 vCPU, 2 GiB, 60 GB SSD — ~$10/mo)
+- **Bundle**: `small_3_2` (2 vCPU, 2 GiB, 60 GB SSD — ~$10/mo)
+- **Region**: `ap-southeast-2` — the sandbox SCP denies Lightsail *creation*
+  in us-east-1 but allows it in ap-southeast-2 (the account's home region),
+  where bundles use the `_3_2` suffix
 - cloud-init user-data installs Docker + Compose, clones the repo, writes
   `.env` (random DB/Grafana passwords) and runs `docker compose up` with the
   public-binding override (`COMPOSE_FILE=compose.yaml:compose.ec2.yaml`)
@@ -42,7 +45,7 @@ Tunables (env): `LIGHTSAIL_NAME`, `AZ`, `BUNDLE` (e.g. `medium_3_0` for 4 GiB),
 - Grafana: `http://<public-ip>:3000` (user `admin`, password in
   `.lightsail-grafana-password`, written next to the scripts)
 - SSH: the Lightsail console "Connect using SSH" button, or download the
-  default key pair under Account → SSH keys → us-east-1
+  default key pair under Account → SSH keys → ap-southeast-2
 
 ## Notes
 

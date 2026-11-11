@@ -5,7 +5,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NAME="${LIGHTSAIL_NAME:-fastapi-pool-mvp-demo}"
-REGION="${LIGHTSAIL_REGION:-us-east-1}"
+REGION="${LIGHTSAIL_REGION:-ap-southeast-2}"
 
 if [[ "${CONFIRM:-no}" != "yes" ]]; then
   read -r -p "Type 'destroy' to delete instance '$NAME' (all data on it is lost): " answer
