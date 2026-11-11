@@ -1,4 +1,4 @@
-.PHONY: lint preflight up down ps test traffic verify smoke k8s-up k8s-down alert-test demo evidence dashboards zip clean
+.PHONY: lint preflight up down ps test traffic verify smoke k8s-up k8s-down alert-test demo evidence dashboards zip clean aws-bootstrap aws-up aws-deploy aws-down ec2-up ec2-stop ec2-resume ec2-destroy
 lint:
 	python3 scripts/lint-repo.py
 preflight:
@@ -35,3 +35,19 @@ clean:
 	@echo "Destructive: this removes named volumes. Use CONFIRM=yes."
 	@test "$(CONFIRM)" = "yes"
 	docker compose down -v
+aws-bootstrap:
+	bash scripts/aws-bootstrap.sh $(EMAIL) $(REPO)
+aws-up:
+	AWS_UP_YES=$(AWS_UP_YES) bash scripts/aws-up.sh
+aws-deploy:
+	bash scripts/aws-deploy.sh
+aws-down:
+	CONFIRM=$(CONFIRM) bash scripts/aws-down.sh
+ec2-up:
+	AWS_EC2_YES=$(AWS_EC2_YES) bash scripts/ec2-up.sh
+ec2-stop:
+	bash scripts/ec2-stop.sh
+ec2-resume:
+	bash scripts/ec2-resume.sh
+ec2-destroy:
+	CONFIRM=$(CONFIRM) bash scripts/ec2-destroy.sh

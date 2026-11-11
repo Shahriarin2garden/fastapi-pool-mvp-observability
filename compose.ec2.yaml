@@ -1,0 +1,8 @@
+# EC2 override: expose the API and Grafana publicly.
+# The base compose.yaml binds everything to 127.0.0.1 (safe for WSL).
+# Selected automatically on the EC2 instance via COMPOSE_FILE in .env.
+services:
+  app:
+    ports: ["8001:8000"]
+  grafana:
+    ports: ["3000:3000"]

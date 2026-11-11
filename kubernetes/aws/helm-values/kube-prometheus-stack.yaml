@@ -1,0 +1,74 @@
+# kube-prometheus-stack on the ephemeral EKS demo cluster.
+# Small retention and storage to keep demo cost near zero.
+fullnameOverride: prometheus
+
+prometheus:
+  prometheusSpec:
+    scrapeInterval: 30s
+    retention: 3d
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+    # ServiceMonitors must carry release: kube-prometheus-stack
+    serviceMonitorSelectorNilUsesHelmValues: true
+
+alertmanager:
+  alertmanagerSpec:
+    retention: 24h
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 1Gi
+
+grafana:
+  defaultDashboardsEnabled: false
+  sidecar:
+    dashboards:
+      enabled: false
+  persistence:
+    enabled: true
+    storageClassName: gp3
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki-gateway.monitoring.svc.cluster.local/
+  # Served under /grafana on the shared demo ALB.
+  grafana.ini:
+    server:
+      root_url: "%(protocol)s://%(domain)s/grafana"
+      serve_from_sub_path: true
+
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi

@@ -1,0 +1,89 @@
+name: Deploy to EKS
+
+# Manual deploy of the order API to the ephemeral EKS demo cluster.
+# Requires: cluster running (make aws-up), OIDC role from the bootstrap
+# layer exported as repo secret AWS_DEPLOY_ROLE_ARN, and DB_PASS secret.
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_db_secret:
+        description: "Refresh the app-db secret with the DB_PASS repo secret"
+        default: "false"
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  DB_USER: postgres
+  DB_NAME: fastdb
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard on required secrets
+        env:
+          ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          CLUSTER: ${{ secrets.AWS_CLUSTER_NAME }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+        run: |
+          if [[ -z "$ROLE_ARN" || -z "$CLUSTER" ]]; then
+            echo "Set AWS_DEPLOY_ROLE_ARN (bootstrap output) and AWS_CLUSTER_NAME repo secrets first."
+            exit 1
+          fi
+          if [[ "${{ inputs.deploy_db_secret }}" == "true" && -z "$DB_PASS" ]]; then
+            echo "deploy_db_secret=true requires the DB_PASS repo secret."
+            exit 1
+          fi
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPO: fastapi-pool-mvp/order-api
+        run: |
+          TAG=$(git rev-parse --short HEAD)
+          IMAGE="$REGISTRY/$REPO:$TAG"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$CLUSTER_NAME"
+        env:
+          CLUSTER_NAME: ${{ secrets.AWS_CLUSTER_NAME }}
+
+      - name: Render and apply manifests
+        env:
+          DB_PASS: ${{ secrets.DB_PASS }}
+          RENDER_DIR: .rendered-aws-ci
+        run: |
+          set -euo pipefail
+          mkdir -p "$RENDER_DIR"
+          SUBST_VARS='${DB_USER} ${DB_PASS} ${DB_NAME} ${IMAGE}'
+          for template in kubernetes/aws/manifests/*.tmpl; do
+            target="$RENDER_DIR/$(basename "$template" .tmpl)"
+            envsubst "$SUBST_VARS" < "$template" > "$target"
+          done
+          cp kubernetes/aws/manifests/*.yaml "$RENDER_DIR"
+          kubectl apply -f "$RENDER_DIR"
+
+      - name: Rollout status
+        run: |
+          kubectl -n shop rollout status deployment/postgres --timeout=5m
+          kubectl -n shop rollout status deployment/order-api --timeout=5m
+          kubectl -n shop get ingress
