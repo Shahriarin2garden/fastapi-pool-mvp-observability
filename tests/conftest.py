@@ -39,6 +39,7 @@ class FakeConnection:
 class FakePool:
     def __init__(self):
         self.connection = FakeConnection()
+        self._idle_size = 1
 
     @asynccontextmanager
     async def acquire(self):
@@ -46,6 +47,9 @@ class FakePool:
 
     def get_size(self):
         return 2
+
+    def get_idle_size(self):
+        return self._idle_size
 
     async def close(self):
         return None
