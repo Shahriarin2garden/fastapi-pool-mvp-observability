@@ -1,5 +1,6 @@
 #!/bin/bash
 # Installs Docker, clones the repo and starts the compose stack.
+# Works on Amazon Linux 2023 (dnf) and Ubuntu (apt).
 # Logs: /var/log/cloud-init-output.log
 set -euo pipefail
 
@@ -11,18 +12,37 @@ ALERT_RECIPIENT="${alert_recip}"
 APP_DIR="/opt/app"
 
 exec > >(tee -a /var/log/user-data.log) 2>&1
-export DEBIAN_FRONTEND=noninteractive
 
-apt-get update -y
-apt-get install -y ca-certificates curl git openssl
+install_docker_al2023() {
+  dnf install -y docker docker-compose-plugin || {
+    dnf install -y docker git
+    mkdir -p /usr/local/lib/docker/cli-plugins
+    curl -fsSL -o /usr/local/lib/docker/cli-plugins/docker-compose \
+      "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64"
+    chmod 755 /usr/local/lib/docker/cli-plugins/docker-compose
+  }
+  systemctl enable --now docker
+}
 
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable" \
-  > /etc/apt/sources.list.d/docker.list
-apt-get update -y
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-systemctl enable --now docker
+install_docker_ubuntu() {
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update -y
+  apt-get install -y ca-certificates curl git openssl
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable" \
+    > /etc/apt/sources.list.d/docker.list
+  apt-get update -y
+  apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  systemctl enable --now docker
+}
+
+if command -v dnf >/dev/null 2>&1; then
+  dnf install -y git || true
+  install_docker_al2023
+else
+  install_docker_ubuntu
+fi
 
 for attempt in 1 2 3 4 5; do
   if git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" "$APP_DIR" 2>/dev/null; then
