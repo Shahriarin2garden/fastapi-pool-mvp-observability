@@ -1,0 +1,56 @@
+#!/bin/bash
+# Lightsail user-data: Docker install + repo clone + compose stack (Ubuntu 24.04).
+# Placeholders are filled in by scripts/lightsail-up.sh via envsubst.
+# Logs: /var/log/user-data.log
+set -euo pipefail
+
+REPO_URL="${repo_url}"
+REPO_BRANCH="${repo_branch}"
+DB_PASS="${db_pass}"
+GRAFANA_PASS="${grafana_pass}"
+ALERT_RECIPIENT="${alert_recipient}"
+APP_DIR="/opt/app"
+
+exec > >(tee -a /var/log/user-data.log) 2>&1
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update -y
+apt-get install -y ca-certificates curl git openssl
+
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable" \
+  > /etc/apt/sources.list.d/docker.list
+apt-get update -y
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+systemctl enable --now docker
+
+git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" "$APP_DIR"
+cd "$APP_DIR"
+cat > .env <<EOF
+DB_HOST=db
+DB_PORT=5432
+DB_USER=postgres
+DB_PASS=$DB_PASS
+DB_NAME=fastdb
+POOL_MIN_SIZE=2
+POOL_MAX_SIZE=10
+COMMAND_TIMEOUT=5
+FAILURE_RATE=0
+GF_ADMIN_USER=admin
+GF_ADMIN_PASSWORD=$GRAFANA_PASS
+NODE_EXPORTER_BIND=172.17.0.1
+LOKI_BIND_IP=127.0.0.1
+SMTP_HOST=
+SMTP_USER=
+SMTP_PASSWORD=
+SMTP_FROM_ADDRESS=
+ALERT_RECIPIENT=$ALERT_RECIPIENT
+COMPOSE_FILE=compose.yaml:compose.ec2.yaml
+EOF
+chmod 600 .env
+
+docker compose up -d --build
+docker compose ps
+
+echo "LIGHTSAIL_USER_DATA_DONE: API on :8001, Grafana on :3000"

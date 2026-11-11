@@ -1,4 +1,4 @@
-.PHONY: lint preflight up down ps test traffic verify smoke k8s-up k8s-down alert-test demo evidence dashboards zip clean aws-bootstrap aws-up aws-deploy aws-down ec2-up ec2-stop ec2-resume ec2-destroy
+.PHONY: lint preflight up down ps test traffic verify smoke k8s-up k8s-down alert-test demo evidence dashboards zip clean aws-bootstrap aws-up aws-deploy aws-down ec2-up ec2-stop ec2-resume ec2-destroy lightsail-up lightsail-stop lightsail-resume lightsail-destroy
 lint:
 	python3 scripts/lint-repo.py
 preflight:
@@ -51,3 +51,11 @@ ec2-resume:
 	bash scripts/ec2-resume.sh
 ec2-destroy:
 	CONFIRM=$(CONFIRM) bash scripts/ec2-destroy.sh
+lightsail-up:
+	bash scripts/lightsail-up.sh
+lightsail-stop:
+	bash scripts/lightsail-stop.sh
+lightsail-resume:
+	bash scripts/lightsail-resume.sh
+lightsail-destroy:
+	CONFIRM=$(CONFIRM) bash scripts/lightsail-destroy.sh

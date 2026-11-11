@@ -24,6 +24,7 @@ wheels/
 *.zip
 fastapi-pool-mvp-demo-key.pem
 .ec2-grafana-password
+.lightsail-grafana-password
 evidence/*.local*
 kubernetes/.rendered/
 kubernetes/.rendered-aws/
