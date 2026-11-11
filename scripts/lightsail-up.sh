@@ -25,63 +25,82 @@ if [[ "$EXISTING" != "not-found" ]]; then
   echo "Instance '$NAME' already exists (state: $EXISTING)."
   if [[ "$EXISTING" == "stopped" ]]; then
     bash "$ROOT/scripts/lightsail-resume.sh"
+    exit 0
   fi
-  exit 0
 fi
 
 db_pass="$(openssl rand -hex 12)"
 grafana_pass="$(openssl rand -hex 12)"
+CREATED=0
 
-USER_DATA="$(sed \
-  -e "s|@@repo_url@@|$REPO_URL|g" \
-  -e "s|@@repo_branch@@|$REPO_BRANCH|g" \
-  -e "s|@@db_pass@@|$db_pass|g" \
-  -e "s|@@grafana_pass@@|$grafana_pass|g" \
-  -e "s|@@alert_recipient@@|$ALERT_RECIPIENT|g" \
-  "$ROOT/infra/lightsail/user-data.sh.tmpl")"
+if [[ "$EXISTING" == "not-found" ]]; then
+  CREATED=1
+  USER_DATA="$(sed \
+    -e "s|@@repo_url@@|$REPO_URL|g" \
+    -e "s|@@repo_branch@@|$REPO_BRANCH|g" \
+    -e "s|@@db_pass@@|$db_pass|g" \
+    -e "s|@@grafana_pass@@|$grafana_pass|g" \
+    -e "s|@@alert_recipient@@|$ALERT_RECIPIENT|g" \
+    "$ROOT/infra/lightsail/user-data.sh.tmpl")"
 
-echo "== Creating Lightsail instance $NAME ($BLUEPRINT, $BUNDLE) in $AZ =="
-aws lightsail create-instances \
-  --instance-name "$NAME" \
-  --availability-zone "$AZ" \
-  --bundle-id "$BUNDLE" \
-  --blueprint-id "$BLUEPRINT" \
-  --user-data "$USER_DATA" \
-  --tags key=Project,value=fastapi-pool-mvp \
-  --region "$REGION" >/dev/null
+  echo "== Creating Lightsail instance $NAME ($BLUEPRINT, $BUNDLE) in $AZ =="
+  aws lightsail create-instances \
+    --instance-name "$NAME" \
+    --availability-zone "$AZ" \
+    --bundle-id "$BUNDLE" \
+    --blueprint-id "$BLUEPRINT" \
+    --user-data "$USER_DATA" \
+    --tags key=Project,value=fastapi-pool-mvp \
+    --region "$REGION" >/dev/null
+fi
+
+echo "== Waiting for the instance to reach running state =="
+STATE="pending"
+for _ in $(seq 1 60); do
+  STATE="$(aws lightsail get-instance-state --instance-name "$NAME" --region "$REGION" --query 'state.name' --output text)"
+  [[ "$STATE" == "running" ]] && break
+  sleep 10
+done
+if [[ "$STATE" != "running" ]]; then
+  echo "ERROR: instance stuck in '$STATE' state after 10 minutes." >&2
+  exit 1
+fi
 
 echo "== Opening ports 22/80/8001/3000 =="
-aws lightsail put-instance-public-ports \
-  --instance-name "$NAME" \
-  --port-infos '[
+PORTS_JSON='[
     {"fromPort": 22,   "toPort": 22,   "protocol": "tcp", "cidrs": ["0.0.0.0/0"]},
     {"fromPort": 80,   "toPort": 80,   "protocol": "tcp", "cidrs": ["0.0.0.0/0"]},
     {"fromPort": 8001, "toPort": 8001, "protocol": "tcp", "cidrs": ["0.0.0.0/0"]},
     {"fromPort": 3000, "toPort": 3000, "protocol": "tcp", "cidrs": ["0.0.0.0/0"]}
-  ]' \
-  --region "$REGION" >/dev/null
-
-echo "== Waiting for the instance to reach running state =="
-for _ in $(seq 1 30); do
-  STATE="$(aws lightsail get-instance-state --instance-name "$NAME" --region "$REGION" --query 'state.name' --output text)"
-  [[ "$STATE" == "running" ]] && break
-  sleep 10
+  ]'
+for _ in $(seq 1 10); do
+  if aws lightsail put-instance-public-ports \
+    --instance-name "$NAME" \
+    --port-infos "$PORTS_JSON" \
+    --region "$REGION" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 15
 done
 
 IP="$(aws lightsail get-instance --instance-name "$NAME" --region "$REGION" --query 'instance.publicIpAddress' --output text)"
 echo "Public IP: $IP"
 
-echo "$grafana_pass" > "$ROOT/.lightsail-grafana-password"
-chmod 600 "$ROOT/.lightsail-grafana-password"
+if [[ "$CREATED" == "1" ]]; then
+  echo "$grafana_pass" > "$ROOT/.lightsail-grafana-password"
+  chmod 600 "$ROOT/.lightsail-grafana-password"
+fi
 
-echo "== Waiting for the stack (user-data installs Docker + builds images; up to 20 min) =="
-for _ in $(seq 1 80); do
-  if curl -fsS --max-time 5 "http://$IP:8001/health" >/dev/null 2>&1; then
-    echo "API is healthy."
-    break
-  fi
-  sleep 15
-done
+if [[ "$CREATED" == "1" ]]; then
+  echo "== Waiting for the stack (user-data installs Docker + builds images; up to 20 min) =="
+  for _ in $(seq 1 80); do
+    if curl -fsS --max-time 5 "http://$IP:8001/health" >/dev/null 2>&1; then
+      echo "API is healthy."
+      break
+    fi
+    sleep 15
+  done
+fi
 
 echo
 echo "== Demo URLs =="
