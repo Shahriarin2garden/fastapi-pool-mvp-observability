@@ -1,14 +1,14 @@
 #!/bin/bash
 # Lightsail user-data: Docker install + repo clone + compose stack (Ubuntu 24.04).
-# Placeholders are filled in by scripts/lightsail-up.sh via envsubst.
+# Placeholders are filled in by scripts/lightsail-up.sh via sed.
 # Logs: /var/log/user-data.log
 set -euo pipefail
 
-REPO_URL="${repo_url}"
-REPO_BRANCH="${repo_branch}"
-DB_PASS="${db_pass}"
-GRAFANA_PASS="${grafana_pass}"
-ALERT_RECIPIENT="${alert_recipient}"
+REPO_URL="@@repo_url@@"
+REPO_BRANCH="@@repo_branch@@"
+DB_PASS="@@db_pass@@"
+GRAFANA_PASS="@@grafana_pass@@"
+ALERT_RECIPIENT="@@alert_recipient@@"
 APP_DIR="/opt/app"
 
 exec > >(tee -a /var/log/user-data.log) 2>&1

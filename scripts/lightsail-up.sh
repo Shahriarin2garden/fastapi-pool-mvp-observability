@@ -27,10 +27,14 @@ fi
 
 db_pass="$(openssl rand -hex 12)"
 grafana_pass="$(openssl rand -hex 12)"
-export db_pass grafana_pass
 
-USER_DATA="$(envsubst '${repo_url} ${repo_branch} ${db_pass} ${grafana_pass} ${alert_recipient}' \
-  < "$ROOT/infra/lightsail/user-data.sh.tmpl")"
+USER_DATA="$(sed \
+  -e "s|@@repo_url@@|$REPO_URL|g" \
+  -e "s|@@repo_branch@@|$REPO_BRANCH|g" \
+  -e "s|@@db_pass@@|$db_pass|g" \
+  -e "s|@@grafana_pass@@|$grafana_pass|g" \
+  -e "s|@@alert_recipient@@|$ALERT_RECIPIENT|g" \
+  "$ROOT/infra/lightsail/user-data.sh.tmpl")"
 
 echo "== Creating Lightsail instance $NAME ($BLUEPRINT, $BUNDLE) in $AZ =="
 aws lightsail create-instances \
