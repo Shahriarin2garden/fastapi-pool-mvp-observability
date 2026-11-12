@@ -11,7 +11,7 @@ NAME="${LIGHTSAIL_NAME:-fastapi-pool-mvp-demo}"
 # default to the console region (e.g. ap-southeast-2) which is SCP-locked.
 REGION="${LIGHTSAIL_REGION:-ap-southeast-2}"
 AZ="${AZ:-ap-southeast-2a}"
-BUNDLE="${BUNDLE:-small_3_2}"        # 2 vCPU / 2 GiB / 60 GB SSD (~$10/mo)
+BUNDLE="${BUNDLE:-small_3_2}"        # 2 vCPU / 2 GiB / 60 GB SSD; verify current pricing
 BLUEPRINT="${BLUEPRINT:-ubuntu_24_04}"
 REPO_URL="${REPO_URL:-https://github.com/Shahriarin2garden/fastapi-pool-mvp-observability.git}"
 REPO_BRANCH="${REPO_BRANCH:-observability-assessment}"
