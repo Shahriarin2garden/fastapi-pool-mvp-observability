@@ -43,8 +43,9 @@ if [[ "$EXISTING" != "not-found" ]]; then
   echo "Instance '$NAME' already exists (state: $EXISTING)."
   echo "NOTE: user data only applies when an instance is created; run make lightsail-destroy first to pick up template changes."
   if [[ "$EXISTING" == "stopped" ]]; then
+    # Resume but continue: the public-port rules below must be re-applied so
+    # older instances receive the current restricted allowlist.
     bash "$ROOT/scripts/lightsail-resume.sh"
-    exit 0
   fi
 fi
 
