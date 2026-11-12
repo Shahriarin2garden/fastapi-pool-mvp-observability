@@ -17,12 +17,19 @@ Same Compose stack as the EC2/local target, on one Lightsail VM:
 - cloud-init user-data installs Docker + Compose, clones the repo, writes
   `.env` (random DB/Grafana passwords) and runs `docker compose up` with the
   public-binding override (`COMPOSE_FILE=compose.yaml:compose.ec2.yaml`)
-- The current automation opens TCP 22, 80, 8001, and 3000 to
-  `0.0.0.0/0`. This is intentionally called out as a security gap, not a
-  recommended firewall policy. Restrict these rules to an approved operator
-  CIDR before using the VM; port 80 is not published by the Compose stack and
-  is not needed for the documented demo. Do not expose Prometheus (9090),
-  Node Exporter (9100), or Loki (3100) publicly.
+- The automation requires `LIGHTSAIL_ALLOWED_CIDR` and rejects IPv4
+  ranges broader than `/24`; use the operator's public IP as `/32` where
+  possible. It opens TCP 22, 8001, and 3000 only to that allowlist. Port 80 is
+  not opened because the Compose stack does not publish it. Do not expose
+  Prometheus (9090), Node Exporter (9100), or Loki (3100) publicly.
+- Example:
+  ```bash
+  export LIGHTSAIL_ALLOWED_CIDR="203.0.113.10/32" # replace with your approved public IP
+  make lightsail-up
+  ```
+- Existing instances must have their effective firewall inspected and
+  restricted; updating this script does not rewrite a running instance's
+  firewall until `make lightsail-up` is run again.
 
 ## Cost
 
