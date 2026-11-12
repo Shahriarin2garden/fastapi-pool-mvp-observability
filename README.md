@@ -11,6 +11,16 @@ and a Grafana alert delivered over SMTP. The demonstrated deployment is Ubuntu
 **Status:** Metrics, Kubernetes logs, Grafana Explore searches, and the SMTP
 alert email were demonstrated on 11 Nov 2026 on the Lightsail deployment.
 
+**Original assessment brief:** [Observability Practical Assessment](Observability_Practical_Assessment_Lipton_Ahammed.html)
+
+**Evidence index:** [Evidence gallery, artifact mapping, and remaining gaps](evidence/README.md)
+
+**Submission branch:** `observability-assessment` (the repository default branch).
+
+> Candidate name and ID are intentionally placeholders. Replace them only for
+> the final candidate-specific submission; do not commit credentials or private
+> infrastructure details.
+
 ## Table of contents
 
 - [Architecture](#architecture)
@@ -28,7 +38,9 @@ alert email were demonstrated on 11 Nov 2026 on the Lightsail deployment.
 - [Persistence test and cleanup](#persistence-test-and-cleanup)
 - [Deviations from the reference brief](#deviations-from-the-reference-brief)
 - [Security notes](#security-notes)
-- [Evidence checklist](#evidence-checklist)
+- [Evidence and acceptance status](#evidence-and-acceptance-status)
+- [Evidence gallery](evidence/README.md)
+- [Automated validation](#automated-validation)
 - [Submission](#submission)
 - [Final review](#final-review)
 - [References](#references)
@@ -116,12 +128,18 @@ Run this sequence from a clean Ubuntu machine. `bootstrap-ubuntu.sh` first
 prints its commands; the `--yes` form installs Docker, MicroK8s, and addons.
 
 ```bash
-git clone <NEW_REPOSITORY_URL>
-cd <REPOSITORY_DIRECTORY>
+git clone --branch observability-assessment https://github.com/Shahriarin2garden/fastapi-pool-mvp-observability.git
+cd fastapi-pool-mvp-observability
+
+# Review the install commands first; the default invocation is a dry run.
 scripts/bootstrap-ubuntu.sh
 scripts/bootstrap-ubuntu.sh --yes
+
+# Group membership changes require a new login session.
+# Then configure the environment before starting the stack.
 cp .env.example .env
-# Edit .env, including NODE_EXPORTER_BIND, LOKI_BIND_IP, SMTP_* and ALERT_RECIPIENT.
+# Edit .env: DB_PASS, GF_ADMIN_PASSWORD, NODE_EXPORTER_BIND,
+# LOKI_BIND_IP, SMTP_* and ALERT_RECIPIENT.
 make preflight
 make up
 make verify
@@ -193,11 +211,14 @@ below are placeholders only.
 | `SMTP_FROM_ADDRESS` | Sender address | `<ALERT_SENDER>` | Yes for email |
 | `ALERT_RECIPIENT` | Alert recipient | `<ALERT_RECIPIENT>` | Yes for email |
 
-Set `LOKI_BIND_IP` to the host private IP that MicroK8s pods can route to.
-Never set it to `0.0.0.0`. Keep port 3100 closed in any cloud firewall and
-allow it only from the required cluster traffic. `BASE_URL`, `DURATION`, and
-`RATE` are optional environment overrides read by `scripts/traffic-test.sh`;
-they are not Compose variables.
+The checked-in `.env.example` uses `LOKI_BIND_IP=127.0.0.1`, which is safe
+for a Compose-only local smoke test but is **not reachable from a MicroK8s pod**.
+For the Kubernetes log flow, set it to the host's private/LAN address that the
+pods can route to, then recreate the Loki service. Do not bind Loki to
+`0.0.0.0` as a shortcut; restrict host and cloud firewall access to the
+required cluster traffic. Keep port 3100 closed to the public internet.
+`BASE_URL`, `DURATION`, and `RATE` are optional environment overrides read
+by `scripts/traffic-test.sh`; they are not Compose variables.
 
 ## Verify metrics
 
@@ -351,16 +372,25 @@ Grafana is provisioned with Prometheus and Loki data sources, dashboards from
 `grafana/provisioning/`. The dashboard list includes `observability-metrics`
 and `kubernetes-logs`.
 
-Generate the dashboard JSON after changing its generator:
+The repository tracks both generated dashboard definitions:
+[`observability-metrics.json`](grafana/dashboards/observability-metrics.json)
+and [`kubernetes-logs.json`](grafana/dashboards/kubernetes-logs.json). The
+metrics dashboard generator defines more than the eight required metric
+panels. CI regenerates the JSON and checks that the committed outputs are in
+sync.
+
+Regenerate after editing the generator:
 
 ```bash
 make dashboards
 ```
 
-To export a dashboard, open its Grafana dashboard, use **Share > Export > Save
-to file**, and store the exported JSON under `evidence/` with credentials and
-environment-specific values removed. An exported dashboard is currently a
-TODO in the evidence checklist.
+For an evaluator-requested export from the running Grafana instance, open each
+dashboard and use **Share > Export > Save to file**. Store the export under
+`evidence/` only after removing environment-specific values and checking it
+for credentials. The generated source JSON files are already committed under
+`grafana/dashboards/`; a separate UI-export copy is not currently committed
+under `evidence/`.
 
 ## Email alerting
 
@@ -437,14 +467,26 @@ sudo snap remove microk8s
 
 ## Deviations from the reference brief
 
-- The demonstrated host is an AWS Lightsail cloud VM instead of a laptop.
-- The image is Ubuntu 24.04 instead of Ubuntu 26.04.
-- Compose and MicroK8s run on the same single host, with Loki bound to the
-  host private IP so pods can push logs.
-- Grafana and the API use public bindings on the demo VM and should be
-  restricted by cloud firewall rules to the operator's IP. Loki remains
-  private to the cluster path.
-- Storage is hostpath/filesystem based and the deployment is single node.
+The source assignment is linked at the top of this README. The documented live
+demonstration differs from the reference topology in these ways:
+
+- The assignment describes an Ubuntu laptop; the demonstrated host was an AWS
+  Lightsail VM.
+- The assignment names Ubuntu 26.04; the demonstrated deployment used Ubuntu
+  24.04. The repository does not claim that the assessment was run on 26.04.
+- Docker Compose and MicroK8s share one cloud VM rather than running as a
+  laptop-local Compose stack plus a separate local cluster.
+- The Lightsail deployment uses public host bindings for the API and Grafana.
+  This is a material security deviation from the assignment's requirement to
+  keep observability endpoints private. See the security warning below.
+- Loki uses filesystem storage and the deployment is single-node; this is a
+  demonstration topology, not a highly available production platform.
+- Lightsail cloud-init installs Docker and starts Compose only. It does not
+  install MicroK8s or Alloy, and it initializes Loki on loopback. The Kubernetes
+  log path therefore requires separate MicroK8s/Alloy installation and a
+  post-bootstrap Loki bind-address/firewall configuration.
+- The Lightsail user-data template leaves SMTP credentials blank. Email
+  delivery must be configured after provisioning before an alert test can pass.
 
 ## Security notes
 
@@ -459,29 +501,34 @@ cloud credentials, private keys, rendered environment-specific Alloy values,
 or screenshots containing secrets. Use placeholders such as
 `<VM_PUBLIC_IP>`, `<HOST_PRIVATE_IP>`, and `<ALERT_RECIPIENT>` in documentation.
 
-## Evidence checklist
+## Evidence and acceptance status
 
-| Assessment task | Command or screenshot | Evidence filename |
+The [evidence index](evidence/README.md) links every screenshot currently
+committed in this branch and maps it to the assignment. The table below
+separates artifacts that exist from proof that is still missing or needs a
+fresh capture.
+
+| Assignment requirement | Current repository evidence | Audit status |
 |---|---|---|
-| Environment | `make preflight`, `make evidence` | `evidence/<timestamp>.txt` |
-| Deployment | `make up`, `make verify` | `evidence/compose-and-cluster.png` TODO |
-| Application instrumentation | `make traffic`, `/metrics` | `evidence/grafana-metrics.png` TODO |
-| Prometheus metrics | Prometheus `/targets` and PromQL table | `evidence/prometheus-targets.png` TODO |
-| Kubernetes and Loki | `make k8s-up`, Explore queries | `evidence/kubernetes-logs.png` TODO |
-| Dashboard | Grafana dashboard export | `evidence/<dashboard>.json` TODO |
-| Email alert | `make alert-test`, received email | `evidence/email-alert.png` TODO |
-| Order Console | Place order, send burst, run failure drill | `evidence/order-console.png` TODO |
-| Frontend telemetry | `/api/telemetry`, Prometheus frontend metrics, Loki `{app="order-ui"}` | `evidence/frontend-telemetry.png` TODO |
-| Demo and handover | `make evidence`, `MANUAL_STEPS.md` | `evidence/<timestamp>.txt` |
+| Environment, Compose services, and cluster overview | [compose-and-cluster.png](evidence/compose-and-cluster.png) and [compose-and-structure .png](evidence/compose-and-structure%20.png) | Screenshots are committed; confirm they visibly include all required version and cluster outputs. |
+| Architecture explanation | [architecture.jpg](evidence/architecture.jpg) | Committed and used by the architecture section above. |
+| Prometheus and Loki data sources | [datasources.png](evidence/datasources.png) | Screenshot committed. |
+| Eight required live metric panels | [grafana-metrics-1.png](evidence/grafana-metrics-1.png) and [grafana-metrics-2.png](evidence/grafana-metrics-2.png); generated dashboard JSON is tracked under [grafana/dashboards](grafana/dashboards/) | Screenshots and JSON definitions are committed; re-check panel values against live data at final demo. |
+| Prometheus Targets with both scrape jobs UP | No dedicated Targets screenshot currently committed | Capture and add `evidence/prometheus-targets.png`. |
+| Custom `/metrics` output and traffic-driven changes | API metrics and traffic scripts are implemented; no dedicated `/metrics` screenshot committed | Capture `/metrics` before/after traffic and include successful and failed request evidence. |
+| Five PromQL expressions and host cross-checks | Expressions are documented; `scripts/crosscheck.sh` is available | Run and commit a sanitized timestamped output file. No timestamped text evidence file is currently in the committed folder. |
+| MicroK8s workload logs searchable in Loki | [kubernetes-logs.png](evidence/kubernetes-logs.png) and [kubernetes-logs2.png](evidence/kubernetes-logs2.png) | Screenshots committed; final live demo must still confirm pod logs, Alloy health, Loki ingestion, labels, and timestamps. |
+| Alert rule and firing state | [alert-rule.png](evidence/alert-rule.png) and [alert-firing.png](evidence/alert-firing.png) | Screenshots committed. |
+| Notification routing | [notification_policies.png](evidence/notification_policies.png) | Screenshot committed. |
+| Received SMTP email | [email.png](evidence/email.png) | Screenshot committed; confirm the received message, subject, and timestamp are legible and sensitive details are redacted. |
+| Persistence after restart | [grafana-persistence.png](evidence/grafana-persistence.png) | Screenshot committed. |
+| Grafana dashboard export | [observability-metrics.json](grafana/dashboards/observability-metrics.json) and [kubernetes-logs.json](grafana/dashboards/kubernetes-logs.json) | Generated dashboard definitions are tracked; a separate export from the live Grafana UI is not currently in `evidence/`. |
+| Optional Order Console and frontend telemetry | Frontend implementation and metrics are in the repository | No dedicated Order Console or frontend telemetry screenshots are currently committed. Treat as optional enhancement evidence, not a substitute for the core requirements. |
 
-The repository currently contains the evidence guide and collected text-output
-mechanism, but the screenshot and dashboard-export rows marked TODO still need
-to be supplied.
-Use [evidence/README.md](evidence/README.md) for the required screenshot names
-and views. Human-only actions are listed in [MANUAL_STEPS.md](MANUAL_STEPS.md).
-At the time of this documentation update, `evidence/` contains only
-`.gitkeep` and the guide, so every screenshot and export row above remains
-TODO until captured from the live deployment.
+`scripts/collect-evidence.sh` creates a timestamped text file under
+`evidence/` when run on the live host; it does not create screenshots. Commit
+only sanitized output. The screenshot inventory and direct links are in
+[evidence/README.md](evidence/README.md).
 
 ## Submission
 
@@ -490,15 +537,21 @@ archive named `<CANDIDATE_ID>_observability.zip`. Include source code,
 Compose and Kubernetes configuration, provisioning, exported dashboards,
 tests, this README, and evidence. Do not submit only screenshots or a PDF.
 
-Before delivery:
+Before delivery, replace the placeholders with the real candidate details
+and review the resulting diff before committing:
 
 ```bash
 scripts/set-candidate.sh "CANDIDATE_NAME" "CANDIDATE_ID"
+git diff --check
 git status --short
-git add .
-git commit -m "docs: prepare observability submission"
-scripts/make-zip.sh CANDIDATE_ID
+git add README.md MANUAL_STEPS.md
+git commit -m "docs: finalize candidate details"
+make zip CANDIDATE_ID="CANDIDATE_ID"
 ```
+
+Use the actual ID as the value for `CANDIDATE_ID`. The Make target now passes
+that value to `scripts/make-zip.sh`; it no longer writes an archive literally
+named `CANDIDATE_ID_observability.zip`.
 
 The archive must not contain `.env`, passwords, SMTP credentials, API tokens,
 private keys, personal information, or screenshots with sensitive details.
@@ -587,31 +640,65 @@ monitoring, Loki, Alloy, and application deployment. Use
 `make aws-up`, `make aws-deploy`, and `make aws-down` with the required AWS
 inputs. See [AWS_DEPLOY.md](AWS_DEPLOY.md).
 
-## What was verified
+## Automated validation
 
-| Area | Result |
-|---|---|
-| CI | Repository linting, configuration validation, and Docker smoke test are covered. |
-| Live Lightsail run | Compose stack, MicroK8s, Alloy to Loki, Grafana Explore, and the SMTP alert email were covered on 11 Nov 2026. |
+The latest GitHub Actions workflow run for the assessment branch completed
+successfully on 12 Nov 2026:
+[Observability CI run 43140433287](https://github.com/Shahriarin2garden/fastapi-pool-mvp-observability/actions/runs/43140433287).
 
-## Issues found
+All four jobs passed:
 
-- The live Lightsail automation opens public ports 22, 80, 8001, and 3000 to
-  all IPv4 addresses; restrict the cloud firewall before reuse.
-- The Lightsail script contains a repository URL and a default recipient
-  fallback. Supply deployment values explicitly and review that script before
-  using it for a submission.
-- The `make zip` target passes the literal `CANDIDATE_ID`; use the direct
-  script command when the archive filename must contain the real ID.
+- **lint** — dashboard regeneration consistency, repository lint, and ShellCheck.
+- **tests** — pytest suite.
+- **config-validate** — Docker Compose, Prometheus, and Loki configuration checks.
+- **stack-smoke** — Docker Compose image build, service health endpoints, and
+  application smoke checks.
 
-## TODO
+This CI result does **not** prove a live MicroK8s cluster, Alloy-to-Loki
+connectivity from that cluster, the Lightsail firewall, or actual SMTP inbox
+delivery. Those remain live acceptance checks and must be shown during the
+demonstration. CI is a repeatable baseline, not a replacement for the complete
+assessment.
 
-- Replace `CANDIDATE_NAME`, `CANDIDATE_ID`, `<NEW_REPOSITORY_URL>`, and
-  `<REPOSITORY_DIRECTORY>` with submission details.
-- Set the assessment date to `12 Nov 2026` and add the final GitHub repository
-  URL only when the submission repository is ready.
-- Add the screenshots, exported dashboard JSON, and any live measurements
-  listed as TODO in the evidence checklist.
+## Security and operational risks
+
+- **Public exposure in the Lightsail automation:** `scripts/lightsail-up.sh`
+  currently opens TCP ports 22, 80, 8001, and 3000 to `0.0.0.0/0`. This is
+  not least-privilege and conflicts with the assignment's private-endpoint
+  requirement. Do not treat the Lightsail target as production-safe. Restrict
+  the Lightsail firewall to the evaluator/operator's approved source CIDR and
+  remove unused public rules before exposing the VM. Do not open 3100, 9090,
+  or 9100 publicly.
+- **Lightsail bootstrap is Compose-only:** the user-data template writes
+  `LOKI_BIND_IP=127.0.0.1`, leaves SMTP credentials blank, and does not install
+  MicroK8s or Alloy. Complete those steps separately before claiming the full
+  metrics/logs/alerting path is provisioned by automation.
+- **Private Loki routing:** for MicroK8s, loopback is not a routable destination
+  from a pod. Configure Loki on a private host interface reachable by the pods
+  and constrain access to the cluster traffic.
+- **Single-node durability and availability:** Prometheus, Loki, Grafana, and
+  PostgreSQL use local named volumes/filesystem storage. There is no multi-node
+  failover or off-host backup in this assessment deployment.
+- **No TLS/authentication layer for every endpoint:** the Compose demo uses
+  loopback for local access; the public override is not a substitute for an
+  authenticated TLS reverse proxy or VPN.
+- **Candidate fields are unfinished:** `CANDIDATE_NAME` and
+  `CANDIDATE_ID` remain placeholders until the candidate-specific submission.
+
+## Before submission
+
+- Complete candidate name, ID, assessment date, and repository URL.
+- Capture the missing Prometheus Targets, direct API metrics, and host
+  cross-check evidence listed in the evidence table.
+- Verify the committed screenshots themselves: no passwords, SMTP details,
+  access tokens, private keys, or unintended personal details.
+- If a live Grafana dashboard export is required, export it and add the
+  sanitized JSON under `evidence/`.
+- Restrict the Lightsail firewall and document the approved remote-access
+  deviation. Prefer the local loopback Compose path for the reference topology.
+- Run `make verify`, `make k8s-up`, `make traffic`, and `make alert-test`
+  against the actual environment immediately before submission.
+- Build and inspect the candidate archive with `make zip CANDIDATE_ID=...`.
 
 ## License
 
