@@ -92,7 +92,7 @@ documented AWS Lightsail deviation below.
 - `kubernetes/`: MicroK8s namespace, workload, and Alloy values.
 - `frontend/`: Vite, React, TypeScript Order Console.
 - `scripts/`: bootstrap, verification, traffic, evidence, and deployment tools.
-- `evidence/`: evidence naming guide and collected text output.
+- `evidence/`: committed screenshots, the evidence gallery, and collected text output.
 - `infra/`: EC2 and EKS Terraform configuration.
 
 ## Prerequisites
@@ -491,10 +491,12 @@ demonstration differs from the reference topology in these ways:
 ## Security notes
 
 In the local Compose file, the API, Prometheus, and Grafana are loopback-only.
-The API and Grafana are public only when `compose.ec2.yaml` is selected. Loki
-uses the private host address needed by MicroK8s, while PostgreSQL is
-unpublished. Keep cloud firewall access to public ports restricted to the
-operator's IP and keep port 3100 closed publicly.
+The EC2/Lightsail override binds the API and Grafana to all host interfaces;
+the Lightsail automation now requires a narrow `LIGHTSAIL_ALLOWED_CIDR`
+allowlist for ports 22, 8001, and 3000. Verify the effective firewall in AWS,
+especially on instances created before this change. Prometheus remains bound
+to loopback, PostgreSQL is unpublished, and Loki uses `LOKI_BIND_IP` for the
+private path from MicroK8s. Never expose ports 3100, 9090, or 9100 publicly.
 
 Never commit `.env`, SMTP credentials, database or Grafana passwords, generated
 cloud credentials, private keys, rendered environment-specific Alloy values,
