@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Hands-on observability practical assessment: real Ubuntu and application metrics, MicroK8s pod logs, Grafana dashboards and email alerts.">
+  <title>Observability — Practical Assessment | Metrics, Kubernetes Logs &amp; Email Alerts</title>
+  <style>
+    :root { --navy:#102b42; --navy2:#173b50; --teal:#078781; --mint:#e7f6f2; --ink:#152e3d; --muted:#58717e; --border:#dbe5e8; --canvas:#f2f6f7; --card:#ffffff; --blue:#eaf2f8; --amber:#fff8e8; --shadow:0 16px 52px rgba(13,42,61,.08); }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--canvas);color:var(--ink);font:14px/1.6 Inter,'Segoe UI',Arial,sans-serif}
+    button,input,textarea{font:inherit}
+    a{color:#057985;text-decoration:underline;text-underline-offset:3px}
+    a:hover{color:#034b54}
+    .sheet{width:min(1120px,calc(100% - 40px));margin:28px auto 64px;background:var(--card);border:1px solid #e3eaec;border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+    .hero{position:relative;overflow:hidden;padding:46px 52px 32px;background:linear-gradient(117deg,#0d283e 0%,#17465a 70%,#14796e 100%);color:#fff}
+    .hero:after{content:"";position:absolute;width:380px;height:380px;right:-160px;top:-225px;border-radius:50%;border:1px solid rgba(255,255,255,.15);box-shadow:0 0 0 55px rgba(255,255,255,.035),0 0 0 112px rgba(255,255,255,.025);pointer-events:none}
+    .eyebrow{letter-spacing:.16em;text-transform:uppercase;font-size:11px;font-weight:800;color:#a8eee2}
+    h1{font-size:clamp(29px,4.1vw,46px);line-height:1.12;letter-spacing:-.036em;margin:12px 0 12px;max-width:840px}
+    .hero p{font-size:15px;line-height:1.6;color:#dcebed;max-width:800px;margin:0}
+    .hero-facts{display:flex;gap:9px;flex-wrap:wrap;margin-top:26px}
+    .fact{padding:9px 14px;border:1px solid rgba(255,255,255,.21);border-radius:9px;background:rgba(255,255,255,.07);min-width:130px}
+    .fact b{display:block;font-size:15px}
+    .fact span{display:block;color:#d5e5ea;font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+    .toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:13px 52px;background:#fbfdfd;border-bottom:1px solid var(--border)}
+    .toolbar span{font-size:12px;color:var(--muted)}
+    .toolbar button{border:1px solid var(--teal);background:var(--teal);color:#fff;font-size:12px;font-weight:700;padding:9px 16px;border-radius:7px;cursor:pointer}
+    main{padding:38px 52px 50px}
+    section{margin-bottom:38px}
+    section:last-child{margin-bottom:0}
+    h2{font-size:22px;letter-spacing:-.027em;color:var(--navy);margin:0 0 9px;line-height:1.28}
+    h3{color:var(--navy);font-size:15px;margin:0 0 9px}
+    p{margin:0 0 12px}
+    .section-note{font-size:13px;color:var(--muted);margin-bottom:16px}
+    .identity{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;padding:19px;border:1px solid var(--border);border-radius:11px;background:#f8fbfc}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#455f6b;font-weight:800}
+    .field input{min-height:39px;border:1px solid #cbdade;border-radius:7px;padding:9px 11px;background:#fff;color:var(--ink)}
+    .lead{border-left:4px solid var(--teal);background:#eef7f7;padding:16px 18px;border-radius:0 9px 9px 0;font-size:13px;margin-top:16px}
+    .lead p:last-child{margin:0}
+    .outcomes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .outcome{border:1px solid var(--border);border-radius:10px;padding:17px;background:#fff}
+    .outcome .icon{width:31px;height:31px;display:grid;place-items:center;border-radius:8px;background:#e6f4f3;color:var(--teal);font-weight:800;font-size:15px;margin-bottom:10px}
+    .outcome p{margin:0;color:var(--muted);font-size:12px}
+    .architecture{border:1px solid var(--border);border-radius:13px;padding:21px;background:linear-gradient(180deg,#f8fbfc,#fff)}
+    .arch-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+    .arch-head strong{text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:#59717d}
+    .arch-head small{font-size:11px;color:var(--muted)}
+    .arch-lane{display:grid;grid-template-columns:110px minmax(0,1.6fr) 24px minmax(0,1fr) 24px minmax(0,1fr) 24px minmax(0,1.1fr);gap:10px;align-items:center;margin-bottom:12px}
+    .lane-label{color:#426372;text-transform:uppercase;font-size:10px;line-height:1.35;letter-spacing:.09em;font-weight:800}
+    .nodes{display:grid;gap:7px}
+    .arch-node{padding:11px 10px;text-align:center;background:#fff;border:1px solid #cddfe4;border-radius:9px;min-width:0}
+    .arch-node b{display:block;color:var(--navy);font-size:12px;line-height:1.3}
+    .arch-node span{display:block;font-size:10px;line-height:1.4;color:#5c7480;margin-top:4px}
+    .arch-node.teal{background:#e9f7f2;border-color:#acd9ce}
+    .arch-node.blue{background:#eaf2f7;border-color:#c6dbe5}
+    .arrow{text-align:center;color:var(--teal);font-size:22px;font-weight:900}
+    .arch-notes{padding:13px 15px;border:1px solid #d8e8e8;border-radius:8px;background:#f4faf9;margin-top:16px;font-size:12px;color:#4c6873}
+    .arch-notes strong{color:var(--navy)}
+    .task-list{display:grid;gap:13px}
+    .task{border:1px solid var(--border);border-radius:11px;overflow:hidden;break-inside:avoid}
+    .task-top{display:flex;gap:14px;padding:15px 18px;align-items:center;background:#f5f9fa;border-bottom:1px solid var(--border)}
+    .num{width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;background:var(--navy);color:#fff;border-radius:8px;font-size:13px;font-weight:800}
+    .task-title{flex:1}
+    .task-title h3{font-size:16px;line-height:1.28;margin:0}
+    .task-title small{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--teal);font-weight:800}
+    .task-content{padding:15px 20px 17px}
+    .task-content ul{margin:0 0 12px;padding-left:21px}
+    .task-content li{padding-left:2px;margin:5px 0;font-size:13px}
+    .evidence{padding:11px 13px;background:#eef7f6;border-radius:7px;font-size:12px;color:#365f67}
+    .evidence b{color:var(--navy)}
+    code{font:12px/1.4 'SFMono-Regular',Consolas,'Liberation Mono',monospace;background:#edf3f5;border-radius:4px;padding:2px 5px;overflow-wrap:anywhere}
+    .callout{border:1px solid #f1dcae;background:var(--amber);border-radius:10px;padding:17px 19px;font-size:13px}
+    .callout h3{margin-bottom:7px}
+    .callout ul{padding-left:20px;margin:6px 0 0}
+    .callout li{margin:6px 0}
+    .submission{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+    .panel{border:1px solid var(--border);border-radius:10px;padding:19px;background:#fff}
+    .panel ul,.panel ol{margin:8px 0 0;padding-left:20px;font-size:13px}
+    .panel li{margin:7px 0}
+    .filetree{color:#e2f4f6;background:#142d40;padding:17px;border-radius:8px;font:11px/1.6 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+    .delivery{border:1px solid #b7ddd7;background:#eaf7f2;border-radius:10px;padding:17px 19px;margin:17px 0;font-size:13px}
+    .delivery b{color:#11514c}
+    .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+    table{border-collapse:collapse;width:100%;font-size:12px}
+    th{text-transform:uppercase;letter-spacing:.06em;background:#eaf2f4;color:#41606b;text-align:left;font-size:10px;padding:12px}
+    td{border-top:1px solid #e5ecee;padding:12px;vertical-align:top}
+    tr:nth-child(even) td{background:#fbfdfd}
+    .ref-links{display:flex;gap:7px 17px;flex-wrap:wrap;font-size:12px}
+    .footer{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid var(--border);padding:20px 52px 24px;color:var(--muted);font-size:11px}
+    .footer strong{color:var(--navy)}
+    @media(max-width:950px){.arch-lane{grid-template-columns:85px minmax(0,1.55fr) 18px minmax(0,1fr) 18px minmax(0,1fr) 18px minmax(0,1fr);gap:5px}.arch-node{padding:10px 6px}.arrow{font-size:17px}}
+    @media(max-width:740px){.sheet{width:100%;margin:0;border:0;border-radius:0}.hero{padding:34px 22px}.toolbar{padding:12px 22px;align-items:start;flex-direction:column}main{padding:28px 20px}.identity,.submission{grid-template-columns:1fr}.outcomes{grid-template-columns:1fr}.arch-head{align-items:flex-start;flex-direction:column}.arch-lane{display:grid;grid-template-columns:1fr;gap:7px;padding:13px 0;border-bottom:1px solid var(--border)}.lane-label{text-align:center}.arrow{transform:rotate(90deg)}.arch-node span{font-size:11px}.footer{padding:18px 20px}}
+    @page{size:A4;margin:11mm}
+    @media print{html,body{background:#fff;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact}.sheet{width:100%;margin:0;border:0;box-shadow:none;border-radius:0}.no-print{display:none!important}.hero{padding:24px 24px 21px}.hero h1{font-size:31px}.hero-facts{margin-top:15px}.fact{padding:6px 11px}.fact b{font-size:12px}main{padding:22px 18px}section{margin-bottom:24px}h2{font-size:18px}.identity{padding:12px;gap:10px}.field input{min-height:31px}.outcome{padding:12px}.outcome .icon{margin-bottom:5px}.architecture{padding:12px}.arch-lane{grid-template-columns:78px minmax(0,1.6fr) 13px minmax(0,1fr) 13px minmax(0,1fr) 13px minmax(0,1fr);gap:4px}.arch-node{padding:7px 4px}.arch-node b{font-size:10px}.arch-node span{font-size:9px}.arrow{font-size:15px}.task-top{padding:9px 13px}.task-content{padding:9px 14px}.task-content li{font-size:11px;margin:3px 0}.task-title h3{font-size:13px}.evidence{padding:7px 10px}.submission,.outcomes{gap:9px}.panel{padding:12px}.filetree{font-size:9px}.footer{padding:15px 18px}.task,.architecture,.panel,.outcome,.callout,.delivery{break-inside:avoid}}
+  
+    /* Instructor details on the cover and in the document footer. */
+    .hero-kicker-row{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;position:relative;z-index:1}
+    .instructor-pill{display:flex;flex-direction:column;align-items:flex-end;gap:3px;text-align:right;border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.11);padding:10px 15px;border-radius:9px;min-width:178px}
+    .instructor-pill span{color:#b8e8e5;text-transform:uppercase;font-size:10px;font-weight:800;letter-spacing:.12em}
+    .instructor-pill strong{font-size:16px;line-height:1.2;color:#fff}
+    .print-page-footer{display:none}
+    @media(max-width:520px){.hero-kicker-row{flex-direction:column}.instructor-pill{align-items:flex-start;text-align:left}}
+    /* The fixed footer repeats automatically on each printed / PDF page. */
+    @media print{
+      @page{size:A4;margin:11mm 11mm 21mm}
+      .instructor-pill{padding:7px 11px;min-width:156px}
+      .instructor-pill strong{font-size:13px}
+      .footer{display:none!important}
+      .print-page-footer{display:flex!important;position:fixed;bottom:-14mm;left:0;right:0;z-index:999;align-items:center;justify-content:space-between;gap:12mm;border-top:1px solid #aabec7;padding:2mm 0 0;color:#456270;font:9px/1.2 Inter,'Segoe UI',Arial,sans-serif;background:#fff}
+      .print-page-footer strong{font-size:10px;color:#102b42;letter-spacing:.02em}
+    }
+    @media print{
+      #outcomes{break-inside:avoid}
+      #tasks h2, #tasks .section-note{break-after:avoid}
+      #architecture h2, #architecture .section-note{break-after:avoid}
+    }
+  </style>
+</head>
+<body>
+<div class="sheet">
+  <header class="hero">
+    <div class="hero-kicker-row">
+      <div class="eyebrow">Hands-on technical evaluation · Practical assignment</div>
+      <div class="instructor-pill"><span>Instructor</span><strong>Lipton Ahammed</strong></div>
+    </div>
+    <h1>System &amp; Application<br>Observability</h1>
+    <p>Build and demonstrate a working observability platform for real Ubuntu host metrics, HTTP application metrics, Kubernetes workload logs, Grafana visualizations, and email-based alerting.</p>
+    <div class="hero-facts" aria-label="Assessment overview">
+      <div class="fact"><b>Ubuntu 26.04</b><span>Target system</span></div>
+      <div class="fact"><b>MicroK8s</b><span>Local Kubernetes</span></div>
+      <div class="fact"><b>12 Nov 2026</b><span>Submission Date</span></div>
+      <div class="fact"><b>ZIP or GitHub</b><span>Required delivery</span></div>
+    </div>
+  </header>
+  <div class="toolbar no-print">
+    <span>Offline-friendly assessment brief · Print directly or save as PDF</span>
+    <button type="button" onclick="window.print()">Print / Save as PDF</button>
+  </div>
+  <main>
+    <section id="candidate">
+      <h2>Candidate information</h2>
+      <p class="section-note">Complete these fields before submitting your assessment.</p>
+      <div class="identity">
+        <div class="field"><label for="candidate-name">Candidate name</label><input id="candidate-name" type="text" placeholder="Full name"></div>
+        <div class="field"><label for="candidate-id">Candidate ID</label><input id="candidate-id" type="text" placeholder="Candidate or employee ID"></div>
+        <div class="field"><label for="date">Assessment date</label><input id="date" type="date"></div>
+        <div class="field"><label for="repo">GitHub URL (if applicable)</label><input id="repo" type="url" placeholder="https://github.com/..."></div>
+      </div>
+      <div class="lead"><p><strong>Assessment scenario.</strong> You are responsible for monitoring a small application environment on your Ubuntu laptop. The solution must demonstrate <strong>metrics from the actual Ubuntu host and a real HTTP application</strong>, <strong>searchable logs from a running Kubernetes cluster</strong>, and <strong>an alert email received after a controlled test</strong>. Use real, changing data. Screenshots alone are not a substitute for a reproducible implementation.</p></div>
+    </section>
+
+    <section id="outcomes">
+      <h2>What you must deliver</h2>
+      <p class="section-note">The assessment is considered technically complete only when all three outcomes can be demonstrated.</p>
+      <div class="outcomes">
+        <div class="outcome"><div class="icon">01</div><h3>Live metrics</h3><p>Prometheus scrapes Ubuntu host and application metrics; Grafana displays CPU, RAM, filesystem, network, traffic, errors, and latency.</p></div>
+        <div class="outcome"><div class="icon">02</div><h3>Kubernetes logs</h3><p>A real MicroK8s cluster runs a workload. Grafana Alloy sends its pod logs to Loki, where they can be filtered in Grafana.</p></div>
+        <div class="outcome"><div class="icon">03</div><h3>Email alerting</h3><p>A meaningful alert is triggered, Grafana sends a notification through configured SMTP, and a message is received in a test inbox.</p></div>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <h2>Expected architecture</h2>
+      <p class="section-note">Reference architecture for the assessment. Equivalent working arrangements are acceptable if the same end-to-end flows are shown.</p>
+      <div class="architecture" role="img" aria-label="Metrics: Ubuntu host and application send metrics to Prometheus, which Grafana queries. Logs: Kubernetes pods send logs through Grafana Alloy to Loki, which Grafana queries. Alerting: Grafana alerts send notifications through SMTP to email.">
+        <div class="arch-head"><strong>Three connected operational flows</strong><small>Metrics · Logs · Notifications</small></div>
+        <div class="arch-lane">
+          <div class="lane-label">Metrics<br>pipeline</div>
+          <div class="nodes"><div class="arch-node"><b>Ubuntu Laptop</b><span>Node Exporter · real CPU, RAM, disk, network</span></div><div class="arch-node"><b>HTTP Demo Application</b><span>/health · /api/orders · /metrics</span></div></div>
+          <div class="arrow">→</div><div class="arch-node teal"><b>Prometheus</b><span>Scrape jobs · time-series storage</span></div>
+          <div class="arrow">→</div><div class="arch-node blue"><b>Grafana</b><span>PromQL · metrics dashboards</span></div><div class="arrow">✓</div>
+        </div>
+        <div class="arch-lane">
+          <div class="lane-label">Kubernetes<br>logs</div>
+          <div class="arch-node"><b>MicroK8s Cluster</b><span>Local Kubernetes · workload Pod stdout/stderr</span></div>
+          <div class="arrow">→</div><div class="arch-node teal"><b>Grafana Alloy</b><span>Discover and collect pod logs</span></div>
+          <div class="arrow">→</div><div class="arch-node teal"><b>Loki</b><span>Log ingestion &amp; querying</span></div>
+          <div class="arrow">→</div><div class="arch-node blue"><b>Grafana</b><span>Explore · LogQL · log panels</span></div>
+        </div>
+        <div class="arch-lane" style="margin-bottom:0">
+          <div class="lane-label">Email<br>alerting</div>
+          <div class="arch-node"><b>Grafana Alert Rule</b><span>Target down, high error rate, or equivalent</span></div>
+          <div class="arrow">→</div><div class="arch-node teal"><b>SMTP Server</b><span>Configured securely through environment / secret</span></div>
+          <div class="arrow">→</div><div class="arch-node blue"><b>Recipient Inbox</b><span>Delivered email with alert details</span></div>
+          <div class="arrow">✓</div><div class="arch-node"><b>Evidence</b><span>Rule state + received email</span></div>
+        </div>
+        <div class="arch-notes"><strong>Deployment boundary:</strong> Run Prometheus, Grafana, Loki, Node Exporter, and the instrumented HTTP app with Docker Compose on Ubuntu. Run a separate local MicroK8s cluster for the log-producing workload and deploy Alloy inside the cluster. Ensure Alloy can reach the Loki ingestion endpoint across these environments; document your networking method. Other equivalent layouts are permitted if the required signals and evidence are preserved.</div>
+      </div>
+    </section>
+
+    <section id="tasks">
+      <h2>Practical tasks &amp; acceptance requirements</h2>
+      <p class="section-note">Perform the following tasks on your own machine. For each task, show a working result to the evaluator and include evidence in your submission.</p>
+      <div class="task-list">
+        <article class="task"><div class="task-top"><span class="num">01</span><div class="task-title"><small>Environment</small><h3>Prepare Ubuntu, Docker and Kubernetes tooling</h3></div></div><div class="task-content"><ul><li>Use Ubuntu 26.04 with native Docker Engine and Docker Compose; install <strong>MicroK8s</strong> and configure <code>kubectl</code> and Helm (or use their MicroK8s-provided commands).</li><li>Create a logical repository structure for application code, Compose, Prometheus, Loki, Kubernetes manifests, Alloy, Grafana and evidence.</li><li>Verify the toolchain versions and record the setup commands needed to reproduce the environment.</li></ul><div class="evidence"><b>Show:</b> Ubuntu version, <code>docker compose version</code>, <code>microk8s status --wait-ready</code>, <code>microk8s kubectl get nodes</code> and directory structure.</div></div></article>
+
+        <article class="task"><div class="task-top"><span class="num">02</span><div class="task-title"><small>Deployment</small><h3>Run the metrics and logging backend</h3></div></div><div class="task-content"><ul><li>Create a <code>compose.yaml</code> stack containing Prometheus, Grafana, Node Exporter, Loki and your HTTP application.</li><li>Configure named volumes for durable data, appropriate restart behavior, service discovery, and configuration through files or environment variables.</li><li>Make Node Exporter read the actual Ubuntu host metrics using suitable read-only mounts and host-aware options.</li><li>Keep observability endpoints private to the laptop. Do not publish Grafana, Loki, Prometheus or exporters on a public interface.</li></ul><div class="evidence"><b>Show:</b> <code>docker compose config</code>, <code>docker compose ps</code>, running services, and persistence after a restart.</div></div></article>
+
+        <article class="task"><div class="task-top"><span class="num">03</span><div class="task-title"><small>App instrumentation</small><h3>Create a measurable HTTP application</h3></div></div><div class="task-content"><ul><li>Build a working Order API (Flask, FastAPI, Node.js, etc.) or equivalent using <code>GET /health</code>, <code>POST /api/orders</code> and <code>GET /metrics</code>.</li><li>Export a request counter, latency histogram, failure/success information, and at least one business-event counter using a supported Prometheus client library.</li><li>Handle normal and deliberately failed requests safely. Use bounded metric labels and clear metric names and units.</li><li>Generate traffic at different rates and verify that counters, histogram buckets and errors change.</li></ul><div class="evidence"><b>Show:</b> Successful and failed HTTP responses, <code>/metrics</code> output with custom metrics, and before/after metric values.</div></div></article>
+
+        <article class="task"><div class="task-top"><span class="num">04</span><div class="task-title"><small>Prometheus metrics</small><h3>Collect and analyze Ubuntu and application telemetry</h3></div></div><div class="task-content"><ul><li>Create separate Prometheus scrape jobs for Node Exporter and the application, using a suitable interval (for example, 15 seconds).</li><li>Confirm both targets report <strong>UP</strong> and measure actual CPU, RAM, disk, network, uptime, request count, failure rate and latency.</li><li>Write and explain PromQL expressions for CPU %, RAM %, application requests/second, errors/failure rate and p95 request latency.</li><li>Compare at least two host readings against Linux commands such as <code>free</code>, <code>df</code> and <code>uptime</code>.</li></ul><div class="evidence"><b>Show:</b> Prometheus Targets with both jobs UP; five working PromQL expressions; and two Ubuntu cross-checks.</div></div></article>
+
+        <article class="task"><div class="task-top"><span class="num">05</span><div class="task-title"><small>Kubernetes &amp; Loki</small><h3>Create a cluster and visualize real MicroK8s pod logs</h3></div></div><div class="task-content"><ul><li>Start and verify a local <strong>MicroK8s</strong> cluster. Deploy at least one application or log-generating workload using a Kubernetes Deployment and a dedicated namespace.</li><li>Ensure the workload writes informative entries to stdout and stderr, including normal events and an intentional error scenario.</li><li>Install and configure <strong>Grafana Alloy</strong> in the cluster (Helm chart or Kubernetes manifests) to discover MicroK8s pod logs and forward them to <strong>Loki</strong>.</li><li>Connect Loki as a Grafana data source. Use Grafana Explore and LogQL to filter logs by namespace, pod or container; show recent errors and timestamps.</li><li>Document how traffic reaches Loki from the cluster and ensure the displayed logs originate from the live Kubernetes workload, not static sample files.</li></ul><div class="evidence"><b>Show:</b> <code>microk8s kubectl get nodes</code>, <code>microk8s kubectl get pods -A</code>, <code>microk8s kubectl logs</code> from the workload, healthy Alloy, Loki ingestion and a matching Grafana log query.</div></div></article>
+
+        <article class="task"><div class="task-top"><span class="num">06</span><div class="task-title"><small>Visualization</small><h3>Build an operational Grafana dashboard</h3></div></div><div class="task-content"><ul><li>Configure both Prometheus and Loki data sources in Grafana.</li><li>Build at least eight useful metrics panels: CPU %, RAM %, disk utilization, network throughput, requests/second, error rate, p95 latency and business-event count.</li><li>Demonstrate Kubernetes logs in Grafana Explore; optionally add a dedicated log panel or a second Kubernetes logs dashboard.</li><li>Use meaningful chart titles, query legends, appropriate units and time ranges. Save and export all dashboard JSON files.</li></ul><div class="evidence"><b>Show:</b> At least eight live metrics panels, searchable MicroK8s pod logs, and exported dashboard JSON.</div></div></article>
+
+        <article class="task"><div class="task-top"><span class="num">07</span><div class="task-title"><small>Notification delivery</small><h3>Configure and test email alerting</h3></div></div><div class="task-content"><ul><li>Configure outbound SMTP for Grafana using environment variables or a secret mechanism. Do not hardcode SMTP credentials in source control.</li><li>Create a Grafana email contact point and notification policy. Configure one actionable alert rule, such as application scrape target down or sustained high error rate.</li><li>Trigger the alert safely, allow its evaluation and notification to run, and verify that an email actually arrives at the designated test inbox.</li><li>Explain the alert threshold, evaluation duration, notification recipient and recommended operator action.</li></ul><div class="evidence"><b>Show:</b> Alert rule/configuration, firing state or alert history, contact-point configuration (credentials hidden), and a received test email with relevant timestamp and subject.</div></div></article>
+
+        <article class="task"><div class="task-top"><span class="num">08</span><div class="task-title"><small>Demonstration &amp; handover</small><h3>Demonstrate the full pipeline and submit the project</h3></div></div><div class="task-content"><ul><li>Show a normal request, a higher traffic rate, and a controlled failure. Explain the corresponding change in application metrics and relevant Kubernetes logs.</li><li>Explain the architecture: metrics ingestion, Kubernetes log collection, dashboard queries and SMTP alert delivery. Mention one limitation or improvement.</li><li>Include reproducible setup, verification, cleanup steps and all required configuration files in a README.</li><li><strong>Submit your complete project as a .zip archive OR provide an accessible GitHub repository link.</strong> A screenshot-only or document-only submission is not acceptable.</li></ul><div class="evidence"><b>Show:</b> End-to-end live demonstration, the project archive or repository URL, all required evidence and a clear README.</div></div></article>
+      </div>
+    </section>
+
+    <section id="rules">
+      <div class="callout">
+        <h3>Assessment rules &amp; boundaries</h3>
+        <ul>
+          <li>Use actual host and application metrics, and actual container logs from the Kubernetes cluster. Avoid invented, static or mocked observability outputs.</li>
+          <li>Keep the infrastructure local unless the evaluator expressly approves remote access. Expose ports only as required for local testing.</li>
+          <li>Do not put API tokens, passwords, personal information, SMTP credentials or recipient secrets in GitHub, the ZIP or screenshots. Use an <code>.env.example</code> and a <code>.gitignore</code>.</li>
+          <li>Equivalent implementation methods are allowed when they reproduce all required behavior. Document any deviations from the reference architecture.</li>
+          <li>The project must be the candidate's own implementation. Official documentation and reference examples may be consulted.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="submission">
+      <h2>Project submission — ZIP or GitHub</h2>
+      <p class="section-note">Submit by <strong>12 Nov 2026</strong>. Deliver one complete, reproducible project. Choose either a ZIP file or an accessible GitHub repository (public or shared with the evaluator).</p>
+      <div class="delivery"><b>Mandatory delivery:</b> <code>candidate-ID_observability.zip</code> <strong>OR</strong> a GitHub repository URL. Include source code, infrastructure configuration, exported dashboards, tests, README and evidence. Do not submit only screenshots or a PDF report.</div>
+      <div class="submission">
+        <div class="panel"><h3>Evidence checklist</h3><ol>
+          <li>Tool versions; <code>docker compose ps</code>, <code>microk8s status</code> and <code>microk8s kubectl get pods -A</code>.</li>
+          <li>Prometheus Targets: Ubuntu and application jobs UP.</li>
+          <li>Application <code>/metrics</code> plus traffic and failure test.</li>
+          <li>Five PromQL results and Ubuntu system cross-checks.</li>
+          <li>Grafana metrics dashboard (at least eight panels).</li>
+          <li>MicroK8s workload logs in both <code>microk8s kubectl logs</code> and Grafana Loki Explore.</li>
+          <li>Grafana alert state and the received email alert (credentials and sensitive details hidden).</li>
+          <li>README with setup, configuration, access, test and cleanup instructions.</li>
+        </ol></div>
+        <div class="panel"><h3>Suggested project structure</h3><pre class="filetree">candidate-ID_observability/
+├── README.md
+├── compose.yaml
+├── .env.example
+├── .gitignore
+├── app/
+│   ├── Dockerfile
+│   └── ... source files
+├── prometheus/
+│   └── prometheus.yml
+├── loki/
+│   └── config.yml
+├── kubernetes/
+│   ├── namespace.yaml
+│   ├── workload.yaml
+│   └── alloy-values.yaml
+├── grafana/
+│   ├── dashboards/
+│   └── provisioning/
+├── alerting/
+│   └── configuration-notes.md
+├── scripts/
+│   └── traffic-test.sh
+└── evidence/
+    ├── compose-and-cluster.png
+    ├── prometheus-targets.png
+    ├── grafana-metrics.png
+    ├── kubernetes-logs.png
+    └── email-alert.png</pre></div>
+      </div>
+    </section>
+
+    <section id="verification">
+      <h2>Final review checklist</h2>
+      <p class="section-note">The evaluator should verify the following observable outcomes during the live demonstration.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Area</th><th>Expected working result</th><th>Proof</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Host &amp; app metrics</strong></td><td>Both Prometheus targets UP; live measurements respond to traffic and host activity.</td><td>Prometheus + terminal</td></tr>
+          <tr><td><strong>Kubernetes logging</strong></td><td>Cluster workload logs appear in Loki and can be searched in Grafana with Kubernetes labels.</td><td><code>microk8s kubectl logs</code> + Grafana Explore</td></tr>
+          <tr><td><strong>Visualizations</strong></td><td>At least eight accurate metrics panels; logs accessible via Grafana.</td><td>Grafana dashboard + LogQL</td></tr>
+          <tr><td><strong>Email alert</strong></td><td>Configured rule fires under test and delivers email to recipient inbox.</td><td>Rule history + received email</td></tr>
+          <tr><td><strong>Reproducibility</strong></td><td>Complete source and configs provided through ZIP or GitHub with safe setup instructions.</td><td>Project archive/repository + README</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="references">
+      <h2>Official documentation</h2>
+      <div class="ref-links">
+        <a href="https://docs.docker.com/compose/">Docker Compose</a>
+        <a href="https://microk8s.io/docs">MicroK8s documentation</a>
+        <a href="https://kubernetes.io/docs/home/">Kubernetes</a>
+        <a href="https://prometheus.io/docs/prometheus/latest/configuration/configuration/">Prometheus</a>
+        <a href="https://github.com/prometheus/node_exporter">Node Exporter</a>
+        <a href="https://grafana.com/docs/alloy/latest/monitor/monitor-kubernetes-logs/">Grafana Alloy: Kubernetes logs</a>
+        <a href="https://grafana.com/docs/loki/latest/get-started/">Grafana Loki</a>
+        <a href="https://grafana.com/docs/grafana/latest/alerting/configure-notifications/manage-contact-points/">Grafana email contact points</a>
+        <a href="https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#smtp">Grafana SMTP configuration</a>
+      </div>
+    </section>
+  </main>
+  <footer class="footer"><div><strong>System &amp; Application Observability</strong> · Instructor: <strong>Lipton Ahammed</strong></div><div>Submission Date: 12 Nov 2026 · Ubuntu + Docker Compose + MicroK8s + Loki + email alerting</div></footer>
+</div>
+  <div class="print-page-footer" aria-hidden="true"><span>Observability Practical Assessment · Submission: 12 Nov 2026</span><strong>Lipton Ahammed</strong></div>
+</body>
+</html>
