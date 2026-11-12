@@ -9,7 +9,7 @@ commands=(
   "sudo apt-get update && sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"
   "sudo snap install microk8s --classic"
   "sudo usermod -aG microk8s,docker \"$USER\""
-  "microk8s enable dns helm3"
+  "sudo microk8s enable dns helm3"
 )
 if [[ "${1:-}" != "--yes" ]]; then
   printf '%s\n' "Dry run; review these commands. Re-run with --yes to execute:"

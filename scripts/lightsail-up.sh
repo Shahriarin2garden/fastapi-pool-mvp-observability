@@ -11,11 +11,29 @@ NAME="${LIGHTSAIL_NAME:-fastapi-pool-mvp-demo}"
 # default to the console region (e.g. ap-southeast-2) which is SCP-locked.
 REGION="${LIGHTSAIL_REGION:-ap-southeast-2}"
 AZ="${AZ:-ap-southeast-2a}"
-BUNDLE="${BUNDLE:-small_3_2}"        # 2 vCPU / 2 GiB / 60 GB SSD (~$10/mo)
+BUNDLE="${BUNDLE:-small_3_2}"        # 2 vCPU / 2 GiB / 60 GB SSD; verify current pricing
 BLUEPRINT="${BLUEPRINT:-ubuntu_24_04}"
 REPO_URL="${REPO_URL:-https://github.com/Shahriarin2garden/fastapi-pool-mvp-observability.git}"
-REPO_BRANCH="${REPO_BRANCH:-main}"
-ALERT_RECIPIENT="${ALERT_RECIPIENT:-you@example.com}"
+REPO_BRANCH="${REPO_BRANCH:-observability-assessment}"
+ALERT_RECIPIENT="${ALERT_RECIPIENT:-}"
+ALLOWED_CIDR="${LIGHTSAIL_ALLOWED_CIDR:-}"
+
+# Refuse an unrestricted cloud firewall. Supply the operator's public IP as /32
+# (or an explicitly approved, narrow office/VPN CIDR).
+if [[ -z "$ALLOWED_CIDR" ]]; then
+  echo "ERROR: set LIGHTSAIL_ALLOWED_CIDR (for example, <your-public-ip>/32)." >&2
+  exit 2
+fi
+python3 - "$ALLOWED_CIDR" <<'PY'
+import ipaddress
+import sys
+try:
+    network = ipaddress.ip_network(sys.argv[1], strict=False)
+except ValueError as exc:
+    raise SystemExit(f"ERROR: invalid LIGHTSAIL_ALLOWED_CIDR: {exc}")
+if network.version != 4 or network.prefixlen < 24:
+    raise SystemExit("ERROR: LIGHTSAIL_ALLOWED_CIDR must be IPv4 /24 or narrower (for example, a single IP as /32).")
+PY
 
 command -v aws >/dev/null 2>&1 || { echo "ERROR: aws CLI not found." >&2; exit 1; }
 
@@ -25,8 +43,9 @@ if [[ "$EXISTING" != "not-found" ]]; then
   echo "Instance '$NAME' already exists (state: $EXISTING)."
   echo "NOTE: user data only applies when an instance is created; run make lightsail-destroy first to pick up template changes."
   if [[ "$EXISTING" == "stopped" ]]; then
+    # Resume but continue: the public-port rules below must be re-applied so
+    # older instances receive the current restricted allowlist.
     bash "$ROOT/scripts/lightsail-resume.sh"
-    exit 0
   fi
 fi
 
@@ -67,13 +86,12 @@ if [[ "$STATE" != "running" ]]; then
   exit 1
 fi
 
-echo "== Opening ports 22/80/8001/3000 =="
-PORTS_JSON='[
-    {"fromPort": 22,   "toPort": 22,   "protocol": "tcp", "cidrs": ["0.0.0.0/0"]},
-    {"fromPort": 80,   "toPort": 80,   "protocol": "tcp", "cidrs": ["0.0.0.0/0"]},
-    {"fromPort": 8001, "toPort": 8001, "protocol": "tcp", "cidrs": ["0.0.0.0/0"]},
-    {"fromPort": 3000, "toPort": 3000, "protocol": "tcp", "cidrs": ["0.0.0.0/0"]}
-  ]'
+echo "== Opening SSH/API/Grafana only to $ALLOWED_CIDR =="
+PORTS_JSON="[
+    {\"fromPort\": 22, \"toPort\": 22, \"protocol\": \"tcp\", \"cidrs\": [\"$ALLOWED_CIDR\"], \"cidrListAliases\": [\"lightsail-connect\"]},
+    {\"fromPort\": 8001, \"toPort\": 8001, \"protocol\": \"tcp\", \"cidrs\": [\"$ALLOWED_CIDR\"]},
+    {\"fromPort\": 3000, \"toPort\": 3000, \"protocol\": \"tcp\", \"cidrs\": [\"$ALLOWED_CIDR\"]}
+  ]"
 for _ in $(seq 1 10); do
   if aws lightsail put-instance-public-ports \
     --instance-name "$NAME" \
