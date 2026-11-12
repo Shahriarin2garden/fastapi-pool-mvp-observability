@@ -691,24 +691,7 @@ assessment.
 - **No TLS/authentication layer for every endpoint:** the Compose demo uses
   loopback for local access; the public override is not a substitute for an
   authenticated TLS reverse proxy or VPN.
-- **Candidate fields are unfinished:** `CANDIDATE_NAME` and
-  `CANDIDATE_ID` remain placeholders until the candidate-specific submission.
 
-## Before submission
-
-- Complete candidate name, ID, assessment date, and repository URL.
-- Capture the missing Prometheus Targets, direct API metrics, and host
-  cross-check evidence listed in the evidence table.
-- Verify the committed screenshots themselves: no passwords, SMTP details,
-  access tokens, private keys, or unintended personal details.
-- If a live Grafana dashboard export is required, export it and add the
-  sanitized JSON under `evidence/`.
-- For the optional Lightsail path, set `LIGHTSAIL_ALLOWED_CIDR=<approved-ip>/32`
-  before `make lightsail-up`, then verify the effective firewall rules in AWS.
-  Prefer the local loopback Compose path for the reference topology.
-- Run `make verify`, `make k8s-up`, `make traffic`, and `make alert-test`
-  against the actual environment immediately before submission.
-- Build and inspect the candidate archive with `make zip CANDIDATE_ID=...`.
 
 ## License
 
