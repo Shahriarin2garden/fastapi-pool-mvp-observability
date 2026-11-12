@@ -546,7 +546,7 @@ git diff --check
 git status --short
 git add README.md MANUAL_STEPS.md
 git commit -m "docs: finalize candidate details"
-make zip CANDIDATE_ID="CANDIDATE_ID"
+make zip CANDIDATE_ID="your-actual-candidate-id"
 ```
 
 Use the actual ID as the value for `CANDIDATE_ID`. The Make target now passes
@@ -662,13 +662,16 @@ assessment.
 
 ## Security and operational risks
 
-- **Public exposure in the Lightsail automation:** `scripts/lightsail-up.sh`
-  currently opens TCP ports 22, 80, 8001, and 3000 to `0.0.0.0/0`. This is
-  not least-privilege and conflicts with the assignment's private-endpoint
-  requirement. Do not treat the Lightsail target as production-safe. Restrict
-  the Lightsail firewall to the evaluator/operator's approved source CIDR and
-  remove unused public rules before exposing the VM. Do not open 3100, 9090,
-  or 9100 publicly.
+- **Lightsail remote-access boundary:** the updated
+  `scripts/lightsail-up.sh` now requires `LIGHTSAIL_ALLOWED_CIDR` and rejects
+  IPv4 ranges broader than `/24`; use the operator's single public IP as
+  `/32` where possible. It opens only TCP 22, 8001, and 3000 to that allowlist.
+  Port 80 is no longer opened because the stack does not publish it. Do not
+  open 3100, 9090, or 9100 publicly. This remains a remote-access deviation
+  from the assignment's laptop-private topology, not a production edge design.
+  Existing Lightsail instances must have their firewall rules refreshed with
+  the restricted configuration or restricted manually; changing the script
+  does not retroactively change a firewall until it is run.
 - **Lightsail bootstrap is Compose-only:** the user-data template writes
   `LOKI_BIND_IP=127.0.0.1`, leaves SMTP credentials blank, and does not install
   MicroK8s or Alloy. Complete those steps separately before claiming the full
@@ -694,8 +697,9 @@ assessment.
   access tokens, private keys, or unintended personal details.
 - If a live Grafana dashboard export is required, export it and add the
   sanitized JSON under `evidence/`.
-- Restrict the Lightsail firewall and document the approved remote-access
-  deviation. Prefer the local loopback Compose path for the reference topology.
+- For the optional Lightsail path, set `LIGHTSAIL_ALLOWED_CIDR=<approved-ip>/32`
+  before `make lightsail-up`, then verify the effective firewall rules in AWS.
+  Prefer the local loopback Compose path for the reference topology.
 - Run `make verify`, `make k8s-up`, `make traffic`, and `make alert-test`
   against the actual environment immediately before submission.
 - Build and inspect the candidate archive with `make zip CANDIDATE_ID=...`.
