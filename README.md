@@ -236,8 +236,8 @@ Use these five PromQL expressions in Prometheus or Grafana:
 |---|---|---|
 | CPU | `100 - avg(rate(node_cpu_seconds_total{mode="idle"}[1m])) * 100` | Converts idle CPU time into host CPU utilisation percentage. |
 | RAM | `(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100` | Shows the percentage of host memory currently unavailable. |
-| Requests/second | `sum(rate(order_requests_total[1m]))` | Counts API request rate over the last minute. |
-| Error/failure rate | `100 * sum(rate(order_requests_total{status_class="5xx"}[1m])) / clamp_min(sum(rate(order_requests_total[1m])), 1e-9)` | Divides failed order requests by all requests without a zero denominator. |
+| Order POST requests/second | `sum(rate(order_requests_total[1m]))` | Counts `POST /api/orders` requests per second; it is not the all-route HTTP request total. |
+| Order POST 5xx rate | `100 * sum(rate(order_requests_total{status_class="5xx"}[1m])) / clamp_min(sum(rate(order_requests_total[1m])), 1e-9)` | Divides failed `POST /api/orders` requests by all order POST requests without a zero denominator. |
 | p95 latency | `histogram_quantile(0.95, sum by (le) (rate(order_request_duration_seconds_bucket[1m])))` | Estimates the 95th-percentile order request latency. |
 
 Run the host cross-check and compare its output with the same Grafana time
@@ -254,14 +254,16 @@ under `evidence/`.
 ## Order API and metrics
 
 The API is available at `/health`, `/docs`, `/api/orders`, and `/metrics`.
-Order instrumentation includes:
+The custom order counter and latency histogram below instrument `POST
+/api/orders` specifically. FastAPI's instrumentator provides the separate
+HTTP-level instrumentation for the wider set of application routes.
 
 - `orders_created_total{status}`
 - `order_requests_total{status_class}`
 - `order_request_duration_seconds`
 - `order_value_cents_total`
 
-The application also retains database-pool and default HTTP metrics. Traffic
+The application also exposes database-pool and default HTTP metrics. Traffic
 can be generated in three modes:
 
 ```bash
