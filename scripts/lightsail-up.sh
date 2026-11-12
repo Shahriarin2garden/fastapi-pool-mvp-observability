@@ -87,7 +87,7 @@ fi
 
 echo "== Opening SSH/API/Grafana only to $ALLOWED_CIDR =="
 PORTS_JSON="[
-    {\"fromPort\": 22, \"toPort\": 22, \"protocol\": \"tcp\", \"cidrs\": [\"$ALLOWED_CIDR\"]},
+    {\"fromPort\": 22, \"toPort\": 22, \"protocol\": \"tcp\", \"cidrs\": [\"$ALLOWED_CIDR\"], \"cidrListAliases\": [\"lightsail-connect\"]},
     {\"fromPort\": 8001, \"toPort\": 8001, \"protocol\": \"tcp\", \"cidrs\": [\"$ALLOWED_CIDR\"]},
     {\"fromPort\": 3000, \"toPort\": 3000, \"protocol\": \"tcp\", \"cidrs\": [\"$ALLOWED_CIDR\"]}
   ]"
