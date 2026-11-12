@@ -29,8 +29,10 @@ evidence:
 	bash scripts/collect-evidence.sh
 dashboards:
 	python scripts/generate_dashboards.py
+CANDIDATE_ID ?=
 zip:
-	bash scripts/make-zip.sh CANDIDATE_ID
+	@test -n "$(CANDIDATE_ID)" || { echo "usage: make zip CANDIDATE_ID=<candidate-id>" >&2; exit 2; }
+	bash scripts/make-zip.sh "$(CANDIDATE_ID)"
 clean:
 	@echo "Destructive: this removes named volumes. Use CONFIRM=yes."
 	@test "$(CONFIRM)" = "yes"
