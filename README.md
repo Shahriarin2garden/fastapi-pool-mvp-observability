@@ -676,9 +676,8 @@ assessment.
   Port 80 is no longer opened because the stack does not publish it. Do not
   open 3100, 9090, or 9100 publicly. This remains a remote-access deviation
   from the assignment's laptop-private topology, not a production edge design.
-  Existing Lightsail instances must have their firewall rules refreshed with
-  the restricted configuration or restricted manually; changing the script
-  does not retroactively change a firewall until it is run.
+  The deploy script reapplies these rules for both running and resumed
+  instances; verify the effective rules in AWS after the command completes.
 - **Lightsail bootstrap is Compose-only:** the user-data template writes
   `LOKI_BIND_IP=127.0.0.1`, leaves SMTP credentials blank, and does not install
   MicroK8s or Alloy. Complete those steps separately before claiming the full
