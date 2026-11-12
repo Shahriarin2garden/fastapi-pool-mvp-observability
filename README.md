@@ -628,10 +628,13 @@ dynamic service discovery before using this design in production.
 
 ## AWS deployment targets
 
-**Lightsail.** The working cloud demonstration uses Ubuntu 24.04 and the
-Compose stack with `compose.ec2.yaml`, plus the Lightsail firewall. Use
-`make lightsail-up`, `make lightsail-stop`, `make lightsail-resume`, and
-`make lightsail-destroy`. See [AWS_LIGHTSAIL.md](AWS_LIGHTSAIL.md).
+**Lightsail.** The optional cloud demonstration uses Ubuntu 24.04 and the
+Compose stack with `compose.ec2.yaml`. Set
+`LIGHTSAIL_ALLOWED_CIDR=<approved-ip>/32` before `make lightsail-up`; the
+script requires a narrow allowlist and reapplies the public-port rules after
+resuming an existing VM. Use `make lightsail-stop`, `make lightsail-resume`,
+and `make lightsail-destroy` for lifecycle operations. See
+[AWS_LIGHTSAIL.md](AWS_LIGHTSAIL.md).
 
 **EC2.** The Terraform EC2 target provisions an Ubuntu VM and bootstraps the
 same Compose application. Use `make ec2-up`, `make ec2-stop`,
