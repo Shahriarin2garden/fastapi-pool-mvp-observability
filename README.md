@@ -39,17 +39,7 @@ alert email were demonstrated on 11 Nov 2026 on the Lightsail deployment.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  Host[Ubuntu host] --> Node[Node Exporter]
-  Node --> Prom[Prometheus]
-  API[FastAPI Order API] --> Prom
-  Prom --> Grafana[Grafana]
-  K8s[MicroK8s log-generator] --> Alloy[Grafana Alloy]
-  Alloy --> Loki[Loki on Compose host]
-  Loki --> Grafana
-  Prom --> Alerts[Grafana Alerting] --> SMTP[SMTP]
-```
+![System architecture diagram](evidence/architecture.jpg)
 
 | Component | Version | Port | Bind address | Purpose |
 |---|---|---:|---|---|
