@@ -51,7 +51,7 @@ alert email were demonstrated on 11 Nov 2026 on the Lightsail deployment.
 
 ## Architecture
 
-![System architecture diagram](evidence/architecture.jpg)
+![System architecture diagram](evidence/architecture_1.jpg)
 
 | Component | Version | Port | Bind address | Purpose |
 |---|---|---:|---|---|
