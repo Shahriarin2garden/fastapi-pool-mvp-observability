@@ -31,8 +31,8 @@ try:
     network = ipaddress.ip_network(sys.argv[1], strict=False)
 except ValueError as exc:
     raise SystemExit(f"ERROR: invalid LIGHTSAIL_ALLOWED_CIDR: {exc}")
-if network.version != 4 or network.prefixlen == 0:
-    raise SystemExit("ERROR: LIGHTSAIL_ALLOWED_CIDR must be a restricted IPv4 CIDR, not 0.0.0.0/0.")
+if network.version != 4 or network.prefixlen < 24:
+    raise SystemExit("ERROR: LIGHTSAIL_ALLOWED_CIDR must be IPv4 /24 or narrower (for example, a single IP as /32).")
 PY
 
 command -v aws >/dev/null 2>&1 || { echo "ERROR: aws CLI not found." >&2; exit 1; }
