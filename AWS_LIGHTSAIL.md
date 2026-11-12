@@ -32,8 +32,8 @@ Same Compose stack as the EC2/local target, on one Lightsail VM:
   make lightsail-up
   ```
 - Existing instances must have their effective firewall inspected and
-  restricted; updating this script does not rewrite a running instance's
-  firewall until `make lightsail-up` is run again.
+  restricted. Rerunning `make lightsail-up` reapplies the allowlist whether the
+  VM was already running or had to be resumed first.
 
 ## Cost
 
