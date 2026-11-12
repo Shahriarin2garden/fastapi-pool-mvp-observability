@@ -1,11 +1,9 @@
 # AWS Lightsail demo (the path that works in the restricted sandbox)
 
-The sandbox org SCP denies `ec2:*` creation (subnets, security groups, key
-pairs) and EKS/ECS/IAM/ECR — but **Lightsail was left out of the deny list**,
-so a bundled Lightsail VM is the working "simple instance instead of local
-Ubuntu" path. Lightsail manages its own networking (public IP, firewall, SSH
-keys), so no VPC/subnet/SG APIs are needed. All automation runs from AWS
-CloudShell via plain `aws lightsail` commands (no Terraform state to lose).
+The Lightsail target is an optional cloud demonstration path, not the
+assignment's laptop-local reference topology. It uses a single Ubuntu VM and
+AWS CloudShell automation; it does not make the deployment highly available
+or production-ready.
 
 ## Architecture
 
@@ -19,13 +17,18 @@ Same Compose stack as the EC2/local target, on one Lightsail VM:
 - cloud-init user-data installs Docker + Compose, clones the repo, writes
   `.env` (random DB/Grafana passwords) and runs `docker compose up` with the
   public-binding override (`COMPOSE_FILE=compose.yaml:compose.ec2.yaml`)
-- Firewall opened for 22/80/8001/3000 via `put-instance-public-ports`
+- The current automation opens TCP 22, 80, 8001, and 3000 to
+  `0.0.0.0/0`. This is intentionally called out as a security gap, not a
+  recommended firewall policy. Restrict these rules to an approved operator
+  CIDR before using the VM; port 80 is not published by the Compose stack and
+  is not needed for the documented demo. Do not expose Prometheus (9090),
+  Node Exporter (9100), or Loki (3100) publicly.
 
 ## Cost
 
-`small_3_0` is ~$10/month running 24/7 — the builder account credits
-(~$165) cover ~16 months. Stopping the instance between demos pauses
-compute billing (disk storage stays billed at a few dollars a month).
+Check current Lightsail pricing for the selected region and bundle before
+creating an instance. Stopping the VM pauses compute charges, but attached
+storage and other billable resources may continue to incur charges.
 
 ## Daily loop (from CloudShell, inside the cloned repo)
 
@@ -36,8 +39,10 @@ make lightsail-resume  # bring it back (public IP may change, script prints it)
 make lightsail-destroy # full teardown
 ```
 
-Tunables (env): `LIGHTSAIL_NAME`, `AZ`, `BUNDLE` (e.g. `medium_3_0` for 4 GiB),
-`BLUEPRINT`, `REPO_URL`, `REPO_BRANCH`.
+Tunables (env): `LIGHTSAIL_NAME`, `LIGHTSAIL_REGION`, `AZ`, `BUNDLE`,
+`BLUEPRINT`, `REPO_URL`, `REPO_BRANCH`, and `ALERT_RECIPIENT`. The script
+now defaults `REPO_BRANCH` to `observability-assessment`; set it explicitly
+when deploying another branch.
 
 ## Demo URLs
 
@@ -46,6 +51,22 @@ Tunables (env): `LIGHTSAIL_NAME`, `AZ`, `BUNDLE` (e.g. `medium_3_0` for 4 GiB),
   `.lightsail-grafana-password`, written next to the scripts)
 - SSH: the Lightsail console "Connect using SSH" button, or download the
   default key pair under Account → SSH keys → ap-southeast-2
+
+## Required post-bootstrap work
+
+The user-data template creates the Compose stack only. It does not install
+MicroK8s or Grafana Alloy. It also writes `LOKI_BIND_IP=127.0.0.1` and leaves
+SMTP credentials blank. Therefore, the Kubernetes log path and email alert
+path are not complete immediately after `make lightsail-up`:
+
+1. Configure Loki on the private interface reachable by the MicroK8s pods.
+2. Keep TCP 3100 private and permit only the cluster traffic needed to push logs.
+3. Install MicroK8s, deploy the workload, and install Alloy using the main README.
+4. Add SMTP credentials through the protected `.env` file and recreate/restart
+   Grafana before testing email delivery.
+
+Do not copy a public/private IP address, password, or SMTP value into tracked
+documentation or screenshots.
 
 ## Notes
 
