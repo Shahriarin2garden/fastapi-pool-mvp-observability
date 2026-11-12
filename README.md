@@ -1,7 +1,7 @@
 # System & application observability
 
-**Candidate:** `CANDIDATE_NAME`
-**Candidate ID:** `CANDIDATE_ID`
+**Candidate:** `Md Shahriar Hossain`
+**Candidate ID:** `30257`
 
 This repository demonstrates real Ubuntu host and FastAPI Order API metrics in
 Prometheus and Grafana, MicroK8s pod logs collected by Grafana Alloy into Loki,
