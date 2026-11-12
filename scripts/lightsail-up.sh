@@ -15,7 +15,25 @@ BUNDLE="${BUNDLE:-small_3_2}"        # 2 vCPU / 2 GiB / 60 GB SSD (~$10/mo)
 BLUEPRINT="${BLUEPRINT:-ubuntu_24_04}"
 REPO_URL="${REPO_URL:-https://github.com/Shahriarin2garden/fastapi-pool-mvp-observability.git}"
 REPO_BRANCH="${REPO_BRANCH:-observability-assessment}"
-ALERT_RECIPIENT="${ALERT_RECIPIENT:-you@example.com}"
+ALERT_RECIPIENT="${ALERT_RECIPIENT:-}"
+ALLOWED_CIDR="${LIGHTSAIL_ALLOWED_CIDR:-}"
+
+# Refuse an unrestricted cloud firewall. Supply the operator's public IP as /32
+# (or an explicitly approved, narrow office/VPN CIDR).
+if [[ -z "$ALLOWED_CIDR" ]]; then
+  echo "ERROR: set LIGHTSAIL_ALLOWED_CIDR (for example, <your-public-ip>/32)." >&2
+  exit 2
+fi
+python3 - "$ALLOWED_CIDR" <<'PY'
+import ipaddress
+import sys
+try:
+    network = ipaddress.ip_network(sys.argv[1], strict=False)
+except ValueError as exc:
+    raise SystemExit(f"ERROR: invalid LIGHTSAIL_ALLOWED_CIDR: {exc}")
+if network.version != 4 or network.prefixlen == 0:
+    raise SystemExit("ERROR: LIGHTSAIL_ALLOWED_CIDR must be a restricted IPv4 CIDR, not 0.0.0.0/0.")
+PY
 
 command -v aws >/dev/null 2>&1 || { echo "ERROR: aws CLI not found." >&2; exit 1; }
 
@@ -67,13 +85,12 @@ if [[ "$STATE" != "running" ]]; then
   exit 1
 fi
 
-echo "== Opening ports 22/80/8001/3000 =="
-PORTS_JSON='[
-    {"fromPort": 22,   "toPort": 22,   "protocol": "tcp", "cidrs": ["0.0.0.0/0"]},
-    {"fromPort": 80,   "toPort": 80,   "protocol": "tcp", "cidrs": ["0.0.0.0/0"]},
-    {"fromPort": 8001, "toPort": 8001, "protocol": "tcp", "cidrs": ["0.0.0.0/0"]},
-    {"fromPort": 3000, "toPort": 3000, "protocol": "tcp", "cidrs": ["0.0.0.0/0"]}
-  ]'
+echo "== Opening SSH/API/Grafana only to $ALLOWED_CIDR =="
+PORTS_JSON="[
+    {\"fromPort\": 22, \"toPort\": 22, \"protocol\": \"tcp\", \"cidrs\": [\"$ALLOWED_CIDR\"]},
+    {\"fromPort\": 8001, \"toPort\": 8001, \"protocol\": \"tcp\", \"cidrs\": [\"$ALLOWED_CIDR\"]},
+    {\"fromPort\": 3000, \"toPort\": 3000, \"protocol\": \"tcp\", \"cidrs\": [\"$ALLOWED_CIDR\"]}
+  ]"
 for _ in $(seq 1 10); do
   if aws lightsail put-instance-public-ports \
     --instance-name "$NAME" \
