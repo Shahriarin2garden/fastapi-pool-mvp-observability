@@ -18,7 +18,7 @@ cannot fully prove on a live Ubuntu/MicroK8s environment.
 - [ ] Review every screenshot and text artifact for passwords, SMTP credentials, tokens, private keys, public addresses, and unintended personal information.
 - [ ] Complete candidate name, ID, assessment date, and final repository URL; review the diff and placeholders.
 - [ ] Run `git diff --check`, `make lint`, `make test`, `make verify`, `make k8s-up`, and `make alert-test` as appropriate for the available host.
-- [ ] Build the archive only after committing the exact files intended for submission: `make zip CANDIDATE_ID=<actual-id>`.
+- [ ] Build the archive only after committing the exact files intended for submission: `make zip CANDIDATE_ID=YOUR_CANDIDATE_ID` (replace the value with the actual ID).
 - [ ] Inspect the archive listing and ensure `.env`, credentials, private keys, generated cloud state, and unreviewed evidence are absent.
 
 ## Human-only checks
